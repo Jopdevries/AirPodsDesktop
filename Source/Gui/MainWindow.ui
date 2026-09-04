@@ -2,145 +2,67 @@
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QDialog" name="MainWindow">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>320</width>
-    <height>300</height>
-   </rect>
-  </property>
-  <property name="windowTitle">
-   <string>AirPodsDesktop information</string>
-  </property>
-  <widget class="QLabel" name="deviceLabel">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>39</y>
-     <width>300</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Segoe UI</family>
-     <pointsize>18</pointsize>
-    </font>
-   </property>
-   <property name="toolTipDuration">
-    <number>3</number>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="alignment">
-    <set>Qt::AlignCenter</set>
-   </property>
-  </widget>
-  <widget class="QWidget" name="gridLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>40</x>
-     <y>90</y>
-     <width>241</width>
-     <height>110</height>
-    </rect>
-   </property>
-   <layout class="QGridLayout" name="layoutAnimation"/>
-  </widget>
-  <widget class="QWidget" name="caseBatteryContainer">
-   <property name="geometry">
-    <rect>
-     <x>179</x>
-     <y>200</y>
-     <width>81</width>
-     <height>51</height>
-    </rect>
-   </property>
-   <layout class="QHBoxLayout" name="layoutCase"/>
-  </widget>
-  <widget class="QWidget" name="podsBatteryContainer">
-   <property name="geometry">
-    <rect>
-     <x>40</x>
-     <y>200</y>
-     <width>141</width>
-     <height>51</height>
-    </rect>
-   </property>
-   <layout class="QHBoxLayout" name="horizontalLayout">
-    <item>
-     <spacer name="horizontalSpacer">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="layoutPods"/>
-    </item>
-    <item>
-     <spacer name="horizontalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QWidget" name="gridLayoutWidget_2">
-   <property name="geometry">
-    <rect>
-     <x>280</x>
-     <y>7</y>
-     <width>31</width>
-     <height>31</height>
-    </rect>
-   </property>
-   <layout class="QGridLayout" name="layoutClose"/>
-  </widget>
-  <widget class="QPushButton" name="pushButton">
-   <property name="geometry">
-    <rect>
-     <x>40</x>
-     <y>230</y>
-     <width>241</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Segoe UI</family>
-     <pointsize>10</pointsize>
-     <weight>75</weight>
-     <bold>true</bold>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">QPushButton {
-	background-color: rgb(212, 211, 217);
-	border:transparent;
-}
-QPushButton:hover { background-color: rgb(222, 221, 227); }
-QPushButton:pressed { background-color: rgb(202, 201, 207); }</string>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-  </widget>
+  <property name="geometry"><rect><x>0</x><y>0</y><width>360</width><height>520</height></rect></property>
+  <property name="windowTitle"><string>AirPodsDesktop information</string></property>
+  <property name="minimumSize"><size><width>360</width><height>0</height></size></property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="leftMargin"><number>20</number></property>
+   <property name="topMargin"><number>18</number></property>
+   <property name="rightMargin"><number>20</number></property>
+   <property name="bottomMargin"><number>18</number></property>
+   <property name="spacing"><number>10</number></property>
+   <item>
+    <widget class="QWidget" name="headerContainer">
+     <property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property>
+     <property name="minimumSize"><size><width>0</width><height>32</height></size></property>
+     <layout class="QHBoxLayout" name="layoutHeader">
+      <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property><property name="spacing"><number>0</number></property>
+      <item><spacer name="headerLeadingSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeType"><enum>QSizePolicy::Fixed</enum></property><property name="sizeHint" stdset="0"><size><width>32</width><height>20</height></size></property></spacer></item>
+      <item>
+       <widget class="QLabel" name="deviceLabel">
+        <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property>
+        <property name="font"><font><pointsize>15</pointsize><weight>57</weight></font></property>
+        <property name="toolTipDuration"><number>5000</number></property><property name="text"><string/></property><property name="alignment"><set>Qt::AlignCenter</set></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="gridLayoutWidget_2">
+        <property name="sizePolicy"><sizepolicy hsizetype="Fixed" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>32</width><height>32</height></size></property><property name="maximumSize"><size><width>32</width><height>32</height></size></property>
+        <layout class="QGridLayout" name="layoutClose"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property></layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="gridLayoutWidget">
+     <property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>136</height></size></property><property name="maximumSize"><size><width>16777215</width><height>145</height></size></property>
+     <layout class="QGridLayout" name="layoutAnimation"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property></layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="batteryRow">
+     <property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>51</height></size></property>
+     <layout class="QHBoxLayout" name="layoutBatteries"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property><property name="spacing"><number>8</number></property>
+      <item>
+       <widget class="QWidget" name="podsBatteryContainer"><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Fixed"><horstretch>2</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>51</height></size></property>
+        <layout class="QHBoxLayout" name="horizontalLayout"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property><item><spacer name="horizontalSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeType"><enum>QSizePolicy::Expanding</enum></property></spacer></item><item><layout class="QHBoxLayout" name="layoutPods"><property name="spacing"><number>12</number></property></layout></item><item><spacer name="horizontalSpacer_2"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeType"><enum>QSizePolicy::Expanding</enum></property></spacer></item></layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="caseBatteryContainer"><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Fixed"><horstretch>1</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>51</height></size></property><layout class="QHBoxLayout" name="layoutCase"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property></layout></widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item><widget class="Line" name="controlSeparator"><property name="minimumSize"><size><width>0</width><height>1</height></size></property><property name="maximumSize"><size><width>16777215</width><height>1</height></size></property><property name="frameShadow"><enum>QFrame::Plain</enum></property><property name="lineWidth"><number>1</number></property><property name="orientation"><enum>Qt::Horizontal</enum></property></widget></item>
+   <item>
+    <widget class="QWidget" name="controlsContainer"><property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Preferred"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><layout class="QVBoxLayout" name="layoutControls"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property></layout></widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="pushButton"><property name="visible"><bool>false</bool></property><property name="minimumSize"><size><width>0</width><height>41</height></size></property><property name="font"><font><pointsize>10</pointsize><weight>75</weight><bold>true</bold></font></property><property name="text"><string/></property></widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections/>

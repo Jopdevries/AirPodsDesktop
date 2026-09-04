@@ -41,13 +41,14 @@ namespace Gui {
 class CloseButton;
 class VideoWidget;
 class BatteryInfo;
+class PopupControlPanel;
 
 class MainWindow : public QDialog
 {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr, bool startUpdateChecker = true);
     ~MainWindow();
 
     void UpdateState(const Core::AirPods::State &state);
@@ -71,11 +72,11 @@ Q_SIGNALS:
     void SilentUpdateAvailable(const Core::Update::ReleaseInfo &releaseInfo);
 
 private:
-    constexpr static QSize _windowSize{320, 300};
+    constexpr static int _windowMinimumWidth = 360;
     constexpr static QSize _screenMargin{24, 24};
-    constexpr static qreal _windowCornerRadius = 32.0;
-    constexpr static int _deviceLabelMaximumPointSize = 18;
-    constexpr static int _deviceLabelMinimumPointSize = 12;
+    constexpr static qreal _windowCornerRadius = 22.0;
+    constexpr static int _deviceLabelMaximumPointSize = 15;
+    constexpr static int _deviceLabelMinimumPointSize = 11;
 
     Ui::MainWindow _ui;
 
@@ -84,6 +85,7 @@ private:
     QMediaPlayer *_mediaPlayer = new QMediaPlayer{this};
     QTimer *_autoHideTimer = new QTimer{this};
     CloseButton *_closeButton;
+    PopupControlPanel *_controlPanel;
     Widget::Battery *_leftBattery = new Widget::Battery{this};
     Widget::Battery *_rightBattery = new Widget::Battery{this};
     Widget::Battery *_caseBattery = new Widget::Battery{this};

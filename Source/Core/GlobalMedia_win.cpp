@@ -19,6 +19,7 @@
 #include "GlobalMedia_win.h"
 
 #include <Functiondiscoverykeys_devpkey.h>
+#include <algorithm>
 
 #include "../Utils.h"
 #include "../Logger.h"
@@ -27,6 +28,43 @@ namespace Core::GlobalMedia {
 
 using namespace std::chrono_literals;
 using namespace winrt::Windows::Media::Control;
+
+std::optional<float> Controller::GetOutputVolume()
+{
+    OS::Windows::Com::UniquePtr<IMMDeviceEnumerator> enumerator;
+    OS::Windows::Com::UniquePtr<IMMDevice> device;
+    OS::Windows::Com::UniquePtr<IAudioEndpointVolume> volume;
+    float value = 0.f;
+    auto result = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                                   enumerator.GetIID(), (void **)enumerator.ReleaseAndAddressOf());
+    if (FAILED(result)) { LOG(Warn, "Create audio enumerator failed: {:#x}", result); return std::nullopt; }
+    result = enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, device.ReleaseAndAddressOf());
+    if (FAILED(result)) { LOG(Warn, "Get default audio endpoint failed: {:#x}", result); return std::nullopt; }
+    result = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                              (void **)volume.ReleaseAndAddressOf());
+    if (FAILED(result)) { LOG(Warn, "Activate endpoint volume failed: {:#x}", result); return std::nullopt; }
+    result = volume->GetMasterVolumeLevelScalar(&value);
+    if (FAILED(result)) LOG(Warn, "Read master volume failed: {:#x}", result);
+    return FAILED(result) ? std::nullopt : std::optional<float>{std::clamp(value, 0.f, 1.f)};
+}
+
+bool Controller::SetOutputVolume(float value)
+{
+    OS::Windows::Com::UniquePtr<IMMDeviceEnumerator> enumerator;
+    OS::Windows::Com::UniquePtr<IMMDevice> device;
+    OS::Windows::Com::UniquePtr<IAudioEndpointVolume> volume;
+    auto result = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                                   enumerator.GetIID(), (void **)enumerator.ReleaseAndAddressOf());
+    if (FAILED(result)) { LOG(Warn, "Create audio enumerator failed: {:#x}", result); return false; }
+    result = enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, device.ReleaseAndAddressOf());
+    if (FAILED(result)) { LOG(Warn, "Get default audio endpoint failed: {:#x}", result); return false; }
+    result = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                              (void **)volume.ReleaseAndAddressOf());
+    if (FAILED(result)) { LOG(Warn, "Activate endpoint volume failed: {:#x}", result); return false; }
+    result = volume->SetMasterVolumeLevelScalar(std::clamp(value, 0.f, 1.f), nullptr);
+    if (FAILED(result)) LOG(Warn, "Write master volume failed: {:#x}", result);
+    return SUCCEEDED(result);
+}
 
 namespace Details {
 

@@ -34,6 +34,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <optional>
 
 #include "GlobalMedia_abstract.h"
 #include "OS/Windows.h"
@@ -76,6 +77,11 @@ protected:
 public:
     void Play() override;
     void Pause() override;
+
+    // Controls the Windows default render endpoint (the active AirPods output
+    // when Windows has selected it). Values are normalized to 0..1.
+    static std::optional<float> GetOutputVolume();
+    static bool SetOutputVolume(float value);
 
 private:
     std::mutex _mutex;

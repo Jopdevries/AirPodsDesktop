@@ -36,3 +36,13 @@ target_link_libraries(
 target_include_directories(QuickConnectTests PRIVATE "${CMAKE_SOURCE_DIR}")
 
 add_test(NAME QuickConnectTests COMMAND QuickConnectTests)
+
+add_executable(
+    MainWindowVisualTests
+
+    MainWindowVisualTests.cpp
+    "${CMAKE_SOURCE_DIR}/Source/Resource/Resource.qrc"
+)
+target_link_libraries(MainWindowVisualTests PRIVATE apd_gui Qt5::Test Qt5::Widgets)
+target_include_directories(MainWindowVisualTests PRIVATE "${CMAKE_SOURCE_DIR}")
+add_test(NAME MainWindowVisualTests COMMAND MainWindowVisualTests)

@@ -325,6 +325,7 @@ set(
     "Source/Gui/DownloadWindow.cpp"
     "Source/Gui/SettingsWindow.cpp"
     "Source/Gui/Widget/Battery.cpp"
+    "Source/Gui/Widget/PopupControlPanel.cpp"
 )
 
 set(APD_APP_CODE_FILES

@@ -18,39 +18,41 @@
 
 #include "MainWindow.h"
 
+#include <QAbstractButton>
 #include <QScreen>
 #include <QCursor>
 #include <QFontMetrics>
 #include <QPainter>
 #include <QMessageBox>
+#include <QFontDatabase>
 
 #include <Config.h>
 #include "../Helper.h"
 #include "../Error.h"
 #include "../Core/AppleCP.h"
+#if defined APD_OS_WIN
+    #include "../Core/GlobalMedia.h"
+#endif
 #include "../Core/Settings.h"
 #include "DownloadWindow.h"
 #include "SelectWindow.h"
+#include "Widget/PopupControlPanel.h"
 
 using namespace std::chrono_literals;
 
 namespace Gui {
 
-class CloseButton : public QWidget
+class CloseButton : public QAbstractButton
 {
-    Q_OBJECT
-
 public:
     CloseButton(QWidget *parent = nullptr)
+        : QAbstractButton{parent}
     {
-        setFixedSize(25, 25);
+        setFixedSize(32, 32);
+        setFocusPolicy(Qt::StrongFocus);
+        setAccessibleName(tr("Sluiten"));
+        setToolTip(tr("Sluiten"));
     }
-
-Q_SIGNALS:
-    void Clicked();
-
-private:
-    bool _isHovering{false}, _isHoldDown{false};
 
 protected:
     void paintEvent(QPaintEvent *event) override
@@ -62,50 +64,28 @@ protected:
         DrawX(painter);
     }
 
-    void enterEvent(QEvent *event) override
-    {
-        _isHovering = true;
-        repaint();
-    }
-
-    void leaveEvent(QEvent *event) override
-    {
-        _isHovering = false;
-        repaint();
-    }
-
-    void mousePressEvent(QMouseEvent *event) override
-    {
-        _isHoldDown = true;
-        repaint();
-    }
-
-    void mouseReleaseEvent(QMouseEvent *event) override
-    {
-        _isHoldDown = false;
-        Q_EMIT Clicked();
-        repaint();
-    }
-
     void DrawBackground(QPainter &painter)
     {
         painter.save();
         {
             painter.setPen(Qt::NoPen);
 
-            QColor color;
-            if (_isHoldDown) {
-                color = QColor{218, 218, 219};
+            const bool dark = qGray(palette().color(QPalette::Window)) < 128;
+            QColor color = dark ? QColor{255, 255, 255, 28} : QColor{60, 60, 67, 20};
+            if (isDown()) {
+                color = dark ? QColor{255, 255, 255, 60} : QColor{60, 60, 67, 48};
             }
-            else if (_isHovering) {
-                color = QColor{228, 228, 229};
+            else if (underMouse()) {
+                color = dark ? QColor{255, 255, 255, 45} : QColor{60, 60, 67, 32};
             }
-            else {
-                color = QColor{238, 238, 239};
-            }
-
             painter.setBrush(QBrush{color});
             painter.drawEllipse(rect());
+
+            if (hasFocus()) {
+                painter.setPen(QPen{QColor{0, 122, 255}, 2});
+                painter.setBrush(Qt::NoBrush);
+                painter.drawEllipse(rect().adjusted(1, 1, -1, -1));
+            }
         }
         painter.restore();
     }
@@ -114,12 +94,15 @@ protected:
     {
         painter.save();
         {
-            painter.setPen(QPen{QColor{131, 131, 135}, 3});
+            const bool dark = qGray(palette().color(QPalette::Window)) < 128;
+            painter.setPen(
+                QPen{dark ? QColor{174, 174, 178} : QColor{110, 110, 115}, 1.5, Qt::SolidLine,
+                     Qt::RoundCap});
             painter.setBrush(Qt::NoBrush);
 
             QSize size = this->size();
 
-            constexpr int margin = 8;
+            constexpr int margin = 10;
 
             painter.drawLine(margin, margin, size.width() - margin, size.height() - margin);
 
@@ -193,7 +176,7 @@ NewVersionAction NewVersionMessageBox(
 
 //////////////////////////////////////////////////
 
-MainWindow::MainWindow(QWidget *parent) : QDialog{parent}
+MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{parent}
 {
     qRegisterMetaType<Core::AirPods::State>("Core::AirPods::State");
     qRegisterMetaType<Core::Update::ReleaseInfo>("Core::Update::ReleaseInfo");
@@ -202,21 +185,39 @@ MainWindow::MainWindow(QWidget *parent) : QDialog{parent}
     _closeButton = new CloseButton{this};
 
     _ui.setupUi(this);
-
-    setFixedSize(_windowSize);
+    setMinimumWidth(_windowMinimumWidth);
+    setFont(QFontDatabase::systemFont(QFontDatabase::GeneralFont));
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(windowFlags() | Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
 
+    const bool dark = qGray(qApp->palette().color(QPalette::Window)) < 128;
     Utils::Qt::SetRoundedCorners(this, _windowCornerRadius);
     Utils::Qt::SetRoundedCorners(_ui.pushButton, 6);
-    Utils::Qt::SetPaletteColor(this, QPalette::Window, Qt::white);
-    Utils::Qt::SetPaletteColor(_ui.deviceLabel, QPalette::WindowText, QColor{94, 94, 94});
+    Utils::Qt::SetPaletteColor(
+        this, QPalette::Window, dark ? QColor{28, 28, 30} : QColor{250, 250, 252});
+    Utils::Qt::SetPaletteColor(
+        _ui.deviceLabel, QPalette::WindowText,
+        dark ? QColor{242, 242, 247} : QColor{28, 28, 30});
+    _ui.controlSeparator->setStyleSheet(
+        dark ? "color: rgba(235,235,245,51);" : "color: rgba(60,60,67,51);");
+    _ui.pushButton->setStyleSheet(
+        dark
+            ? "QPushButton { min-height: 41px; border: 0; border-radius: 10px; "
+              "background: #3a3a3c; color: #f2f2f7; } QPushButton:hover { background: #48484a; "
+              "} QPushButton:focus { border: 2px solid #0a84ff; }"
+            : "QPushButton { min-height: 41px; border: 0; border-radius: 10px; "
+              "background: #e5e5ea; color: #1c1c1e; } QPushButton:hover { background: #d1d1d6; "
+              "} QPushButton:focus { border: 2px solid #007aff; }");
+
+    _controlPanel = new PopupControlPanel{this};
+    _controlPanel->SetNoiseControlState(std::nullopt, false);
+    _ui.layoutControls->addWidget(_controlPanel);
 
     connect(qApp, &QGuiApplication::applicationStateChanged, this, &MainWindow::OnAppStateChanged);
     connect(_ui.pushButton, &QPushButton::clicked, this, &MainWindow::OnButtonClicked);
     connect(&_posAnimation, &QPropertyAnimation::finished, this, &MainWindow::OnPosMoveFinished);
     connect(_videoWidget, &VideoWidget::Clicked, this, &MainWindow::OnAnimationClicked);
-    connect(_closeButton, &CloseButton::Clicked, this, &MainWindow::DoHide);
+    connect(_closeButton, &QAbstractButton::clicked, this, &MainWindow::DoHide);
     connect(_mediaPlayer, &QMediaPlayer::stateChanged, this, &MainWindow::OnPlayerStateChanged);
 
     connect(this, &MainWindow::UpdateStateSafely, this, &MainWindow::UpdateState);
@@ -230,7 +231,8 @@ MainWindow::MainWindow(QWidget *parent) : QDialog{parent}
     connect(
         this, &MainWindow::VersionUpdateAvailableSafely, this, &MainWindow::VersionUpdateAvailable);
 
-    _posAnimation.setDuration(500);
+    _posAnimation.setDuration(260);
+    _posAnimation.setEasingCurve(QEasingCurve::OutCubic);
     _autoHideTimer->callOnTimeout([this] { DoHide(); });
     _mediaPlayer->setMuted(true);
     _mediaPlayer->setVideoOutput(_videoWidget);
@@ -245,7 +247,9 @@ MainWindow::MainWindow(QWidget *parent) : QDialog{parent}
     _ui.layoutAnimation->activate();
     _videoWidget->show();
 
-    _updateChecker.Start();
+    if (startUpdateChecker) {
+        _updateChecker.Start();
+    }
 }
 
 MainWindow::~MainWindow()
@@ -366,6 +370,7 @@ void MainWindow::ChangeButtonAction(ButtonAction action)
     case ButtonAction::NoButton:
         _ui.pushButton->setText("");
         _ui.pushButton->hide();
+        adjustSize();
         return;
 
     case ButtonAction::Bind:
@@ -378,6 +383,7 @@ void MainWindow::ChangeButtonAction(ButtonAction action)
 
     _buttonAction = action;
     _ui.pushButton->show();
+    adjustSize();
 }
 
 void MainWindow::SetAnimation(std::optional<Core::AirPods::Model> model)
@@ -554,6 +560,9 @@ void MainWindow::Repaint()
 
 void MainWindow::FitDeviceLabelFont()
 {
+    const auto fullText = _ui.deviceLabel->text();
+    _ui.deviceLabel->setToolTip(fullText);
+
     auto font = _ui.deviceLabel->font();
     font.setPointSize(_deviceLabelMaximumPointSize);
 
@@ -565,6 +574,10 @@ void MainWindow::FitDeviceLabelFont()
     }
 
     _ui.deviceLabel->setFont(font);
+    const QFontMetrics metrics{font};
+    if (metrics.horizontalAdvance(fullText) > availableWidth) {
+        _ui.deviceLabel->setText(metrics.elidedText(fullText, Qt::ElideMiddle, availableWidth));
+    }
 }
 
 void MainWindow::OnAppStateChanged(Qt::ApplicationState state)
@@ -634,7 +647,8 @@ void MainWindow::DoHide()
     const auto screenGeometry = screen()->geometry();
 
     _posAnimation.stop();
-    _posAnimation.setEasingCurve(QEasingCurve::InExpo);
+    _posAnimation.setDuration(180);
+    _posAnimation.setEasingCurve(QEasingCurve::InCubic);
     _posAnimation.setStartValue(pos());
     _posAnimation.setEndValue(QPoint{x(), screenGeometry.bottom() + 1});
     _posAnimation.start();
@@ -668,7 +682,8 @@ void MainWindow::showEvent(QShowEvent *event)
     Utils::Qt::SetRoundedCorners(this, _windowCornerRadius);
 
     _posAnimation.stop();
-    _posAnimation.setEasingCurve(QEasingCurve::OutExpo);
+    _posAnimation.setDuration(260);
+    _posAnimation.setEasingCurve(QEasingCurve::OutCubic);
     _posAnimation.setStartValue(pos());
     _posAnimation.setEndValue(QPoint{targetX, targetY});
     _posAnimation.start();

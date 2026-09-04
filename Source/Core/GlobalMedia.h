@@ -33,4 +33,16 @@ inline void Pause()
 {
     Controller::GetInstance().Pause();
 }
+
+#if defined APD_OS_WIN
+inline std::optional<float> GetOutputVolume()
+{
+    return Controller::GetInstance().GetOutputVolume();
+}
+
+inline bool SetOutputVolume(float value)
+{
+    return Controller::GetInstance().SetOutputVolume(value);
+}
+#endif
 } // namespace Core::GlobalMedia
