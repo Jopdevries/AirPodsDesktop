@@ -11,8 +11,8 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
-#include <QPalette>
 #include <QPushButton>
+#include <QRadialGradient>
 #include <QSignalBlocker>
 #include <QSlider>
 #include <QStyle>
@@ -26,16 +26,6 @@
 
 namespace Gui {
 namespace {
-QColor ColorFor(bool dark, const QColor &light, const QColor &darkColor)
-{
-    return dark ? darkColor : light;
-}
-
-bool IsDark(const QWidget *widget)
-{
-    return qGray(widget->palette().color(QPalette::Window).rgb()) < 128;
-}
-
 QString ModeName(PopupControlPanel::NoiseControlMode mode)
 {
     switch (mode) {
@@ -134,9 +124,10 @@ protected:
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
-        const bool dark = IsDark(this);
-        constexpr qreal thumbDiameter = 18.0;
-        constexpr qreal trackHeight = 6.0;
+        // Tahoe's compact Sound control is deliberately a slender 4 pt rail with a
+        // 20 pt thumb.  The widget stays 28 pt tall, leaving a comfortable hit target.
+        constexpr qreal thumbDiameter = 20.0;
+        constexpr qreal trackHeight = 4.0;
         const QRectF bounds = rect();
         const qreal left = bounds.left() + thumbDiameter / 2.0;
         const qreal span = qMax<qreal>(0.0, bounds.width() - thumbDiameter);
@@ -147,35 +138,34 @@ protected:
         const QRectF track{left, bounds.center().y() - trackHeight / 2.0, span, trackHeight};
 
         if (hasFocus() && isEnabled()) {
-            QColor focus = dark ? QColor{"#0A84FF"} : QColor{"#007AFF"};
-            focus.setAlpha(115);
+            QColor focus{255, 255, 255, 190};
             painter.setPen(QPen{focus, 3.0, Qt::SolidLine, Qt::RoundCap});
             painter.setBrush(Qt::NoBrush);
             painter.drawLine(QPointF{track.left(), track.center().y()},
                              QPointF{track.right(), track.center().y()});
         }
 
-        const QColor inactive = ColorFor(dark, QColor{"#C7C7CC"}, QColor{"#48484A"});
-        const QColor active = dark ? QColor{"#0A84FF"} : QColor{"#007AFF"};
+        const QColor inactive{255, 255, 255, 104};
+        const QColor active{255, 255, 255, 225};
         painter.setPen(Qt::NoPen);
-        painter.setBrush(
-            isEnabled() ? inactive : ColorFor(dark, QColor{"#D1D1D6"}, QColor{"#3A3A3C"}));
+        painter.setBrush(isEnabled() ? inactive : QColor{255, 255, 255, 52});
         painter.drawRoundedRect(track, trackHeight / 2.0, trackHeight / 2.0);
 
         QRectF filled = track;
         filled.setRight(thumbX);
-        painter.setBrush(
-            isEnabled() ? active : ColorFor(dark, QColor{"#AEAEB2"}, QColor{"#636366"}));
+        painter.setBrush(isEnabled() ? active : QColor{255, 255, 255, 76});
         painter.drawRoundedRect(filled, trackHeight / 2.0, trackHeight / 2.0);
 
         const QPointF thumb{thumbX, bounds.center().y()};
         if (isEnabled()) {
             painter.setPen(Qt::NoPen);
-            painter.setBrush(QColor{0, 0, 0, dark ? 72 : 34});
+            // A one-point, low-opacity shadow separates the white thumb from the
+            // glass without turning it into a separate control card.
+            painter.setBrush(QColor{0, 0, 0, 42});
             painter.drawEllipse(thumb + QPointF{0.0, 1.0}, thumbDiameter / 2.0,
                                 thumbDiameter / 2.0);
         }
-        painter.setBrush(isEnabled() ? QColor{"#FFFFFF"} : QColor{"#D1D1D6"});
+        painter.setBrush(isEnabled() ? Qt::white : QColor{255, 255, 255, 125});
         painter.drawEllipse(thumb, thumbDiameter / 2.0, thumbDiameter / 2.0);
     }
 
@@ -214,7 +204,7 @@ protected:
 private:
     void SetValueFromPosition(int x)
     {
-        constexpr int thumbDiameter = 18;
+        constexpr int thumbDiameter = 20;
         const int span = qMax(1, width() - thumbDiameter);
         const int position = qBound(0, x - thumbDiameter / 2, span);
         const int newValue = QStyle::sliderValueFromPosition(minimum(), maximum(), position, span,
@@ -240,7 +230,7 @@ protected:
     {
         QPainter painter{this};
         painter.setRenderHint(QPainter::Antialiasing);
-        const QColor color = IsDark(this) ? QColor{"#F5F5F7"} : QColor{"#1D1D1F"};
+        const QColor color{255, 255, 255, 235};
         painter.setPen(QPen{color, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin});
         painter.setBrush(Qt::NoBrush);
         painter.drawEllipse(QRectF{3.0, 3.0, 7.5, 9.5});
@@ -271,12 +261,22 @@ protected:
         QPainter painter{this};
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setRenderHint(QPainter::TextAntialiasing);
-        const bool dark = IsDark(this);
         const bool enabled = isEnabled();
-        const QColor primary = ColorFor(dark, QColor{"#1D1D1F"}, QColor{"#F5F5F7"});
-        const QColor unavailable = ColorFor(dark, QColor{"#707178"}, QColor{"#8E8E93"});
-        const QColor accent = dark ? QColor{"#0A84FF"} : QColor{"#007AFF"};
+        const QColor primary{255, 255, 255, 245};
+        const QColor unavailable{255, 255, 255, 132};
+        const QColor accent{255, 255, 255, 210};
         const QRectF glyphBounds{32.0, 4.0, 22.0, 22.0};
+
+        if (isChecked()) {
+            painter.setPen(QPen{QColor{177, 245, 255, 92}, 1.0});
+            painter.setBrush(QColor{13, 177, 202, 34});
+            painter.drawRoundedRect(QRectF{1.0, 1.0, width() - 2.0, height() - 2.0}, 6.0, 6.0);
+        }
+        else if (underMouse() && enabled) {
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor{19, 171, 196, 20});
+            painter.drawRoundedRect(QRectF{1.0, 1.0, width() - 2.0, height() - 2.0}, 6.0, 6.0);
+        }
 
         if (hasFocus() && enabled) {
             QColor focus = accent;
@@ -339,9 +339,8 @@ protected:
     {
         QPainter painter{this};
         painter.setRenderHint(QPainter::Antialiasing);
-        const QColor color = !isEnabled()
-            ? (IsDark(this) ? QColor{"#8E8E93"} : QColor{"#6E6E73"})
-            : (IsDark(this) ? QColor{"#F5F5F7"} : QColor{"#1D1D1F"});
+        const QColor color = isEnabled() ? QColor{255, 255, 255, 235}
+                                         : QColor{255, 255, 255, 125};
         QPainterPath speaker;
         speaker.moveTo(2.5, 9.0);
         speaker.lineTo(6.8, 9.0);
@@ -408,9 +407,9 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
     _slider->setRange(0, 100);
     _slider->setSingleStep(1);
     _slider->setPageStep(10);
-    _slider->setAccessibleName(tr("Geluidsniveau"));
-    _slider->setAccessibleDescription(tr("Windows-uitvoervolume"));
-    _slider->setToolTip(tr("Windows-uitvoervolume"));
+    _slider->setAccessibleName(tr("Volume"));
+    _slider->setAccessibleDescription(tr("Windows output volume"));
+    _slider->setToolTip(tr("Windows output volume"));
     volumeStage->addWidget(_slider, 1);
     _speakerGlyph = new SpeakerGlyph{this};
     volumeStage->addWidget(_speakerGlyph);
@@ -446,9 +445,9 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
         auto *button = new NoiseControlButton{mode, this};
         button->setCheckable(true);
         button->setEnabled(false);
-        button->setAccessibleName(tr("Luistermodus: %1").arg(ModeName(mode)));
-        button->setAccessibleDescription(tr("Niet beschikbaar"));
-        button->setToolTip(tr("AirPods-bediening niet beschikbaar"));
+        button->setAccessibleName(tr("Noise Control: %1").arg(ModeName(mode)));
+        button->setAccessibleDescription(tr("Unavailable"));
+        button->setToolTip(tr("Noise Control is unavailable on Windows"));
         _modeGroup->addButton(button);
         connect(button, &QPushButton::clicked, this, [this, mode] {
             Q_EMIT NoiseControlRequested(mode);
@@ -461,9 +460,9 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
     }
     root->addLayout(modes);
 
-    _unavailableStatus = new QLabel{tr("AirPods-bediening niet beschikbaar"), this};
+    _unavailableStatus = new QLabel{tr("Noise Control is unavailable on Windows"), this};
     _unavailableStatus->setObjectName("unavailableStatus");
-    _unavailableStatus->setAccessibleName(tr("AirPods-bediening niet beschikbaar"));
+    _unavailableStatus->setAccessibleName(tr("Noise Control is unavailable on Windows"));
     _unavailableStatus->setWordWrap(true);
     root->addWidget(_unavailableStatus);
 
@@ -472,7 +471,7 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
         _volumeValue->setText(tr("%1%").arg(value));
         _speakerGlyph->SetVolume(value);
         _slider->setAccessibleDescription(
-            tr("Windows-uitvoervolume, %1 procent").arg(value));
+            tr("Windows output volume, %1 percent").arg(value));
 #if defined APD_OS_WIN
         if (!Core::GlobalMedia::SetOutputVolume(value / 100.f)) {
             SetVolumeUnavailable();
@@ -495,38 +494,53 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
 void PopupControlPanel::paintEvent(QPaintEvent *)
 {
     QPainter painter{this};
-    painter.setRenderHint(QPainter::Antialiasing);
-    const bool dark = IsDark(this);
+    painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
     const QRectF surface = rect().adjusted(0.5, 0.5, -0.5, -0.5);
     QLinearGradient material{surface.topLeft(), surface.bottomRight()};
-    material.setColorAt(0.0, ColorFor(dark, QColor{"#F8F9FC"}, QColor{"#38383A"}));
-    material.setColorAt(1.0, ColorFor(dark, QColor{"#E9EDF4"}, QColor{"#242426"}));
+    material.setColorAt(0.0, QColor{"#0A7F97"});
+    material.setColorAt(0.54, QColor{"#00748C"});
+    material.setColorAt(1.0, QColor{"#00637B"});
     painter.setPen(Qt::NoPen);
     painter.setBrush(material);
-    painter.drawRoundedRect(surface, 22.0, 22.0);
+    painter.drawRoundedRect(surface, 18.0, 18.0);
 
-    QColor highlight{255, 255, 255, dark ? 18 : 185};
-    painter.setPen(QPen{highlight, 1.0});
+    QPainterPath clip;
+    clip.addRoundedRect(surface, 18.0, 18.0);
+    QRadialGradient bloom{
+        QPointF{surface.right() - surface.width() * 0.12,
+                surface.top() + surface.height() * 0.08},
+        qMax(surface.width(), surface.height()) * 0.62};
+    bloom.setColorAt(0.0, QColor{196, 248, 255, 44});
+    bloom.setColorAt(0.45, QColor{95, 219, 240, 16});
+    bloom.setColorAt(1.0, Qt::transparent);
+    painter.save();
+    painter.setClipPath(clip);
+    painter.fillRect(surface, bloom);
+    painter.restore();
+
+    painter.setPen(QPen{QColor{187, 246, 255, 224}, 1.0});
     painter.setBrush(Qt::NoBrush);
-    painter.drawRoundedRect(surface.adjusted(0.5, 0.5, -0.5, -0.5), 21.5, 21.5);
+    painter.drawRoundedRect(surface.adjusted(0.5, 0.5, -0.5, -0.5), 17.5, 17.5);
+
+    painter.setPen(QPen{QColor{117, 225, 242, 110}, 0.75});
+    painter.drawRoundedRect(surface.adjusted(1.5, 1.5, -1.5, -1.5), 16.5, 16.5);
 }
 
 void PopupControlPanel::ApplyStyle()
 {
-    const bool dark = IsDark(this);
-    const QString fg = dark ? "#F5F5F7" : "#1D1D1F";
-    const QString secondary = dark ? "#AEAEB2" : "#5F6470";
-    const QString separator = dark ? "rgba(235,235,245,0.18)" : "rgba(60,60,67,0.18)";
-    setStyleSheet(
-        QStringLiteral("QFrame#popupControlPanel { background: transparent; border: none; }"
-                       "QLabel { color: %1; font-size: 13px; background: transparent; }"
-                       "QLabel#sectionLabel { color: %1; font-size: 13px; font-weight: 600; }"
-                       "QLabel#noiseControlLabel { color: %1; font-size: 13px; font-weight: 600; }"
-                       "QLabel#volumeValue { color: %2; font-size: 13px; font-weight: 600; }"
-                       "QLabel#unavailableStatus { color: %2; font-size: 11px; }"
-                       "QFrame#controlSeparator { color: %3; background: %3; border: none; }"
-                       "QPushButton { background: transparent; border: none; }")
-            .arg(fg, secondary, separator));
+    setStyleSheet(QStringLiteral(
+        "QFrame#popupControlPanel { background: transparent; border: none; }"
+                       "QLabel { color: rgba(255,255,255,0.96); font-size: 13px; "
+                       "background: transparent; }"
+                       "QLabel#sectionLabel, QLabel#noiseControlLabel { "
+                       "color: #FFFFFF; font-size: 13px; font-weight: 600; }"
+                       "QLabel#volumeValue { color: rgba(255,255,255,0.88); "
+                       "font-size: 13px; font-weight: 600; }"
+                       "QLabel#unavailableStatus { color: rgba(255,255,255,0.72); "
+                       "font-size: 11px; }"
+                       "QFrame#controlSeparator { color: rgba(255,255,255,0.42); "
+                       "background: rgba(255,255,255,0.42); border: none; }"
+                       "QPushButton { background: transparent; border: none; }"));
 }
 
 void PopupControlPanel::SetPreviewVolume(int percent)
@@ -549,8 +563,8 @@ void PopupControlPanel::SetVolumePercent(int percent)
     _volumeValue->setText(tr("%1%").arg(_slider->value()));
     _speakerGlyph->SetVolume(_slider->value());
     _slider->setAccessibleDescription(
-        tr("Windows-uitvoervolume, %1 procent").arg(_slider->value()));
-    _slider->setToolTip(tr("Windows-uitvoervolume"));
+        tr("Windows output volume, %1 percent").arg(_slider->value()));
+    _slider->setToolTip(tr("Windows output volume"));
 }
 
 void PopupControlPanel::SetVolumeUnavailable()
@@ -558,8 +572,8 @@ void PopupControlPanel::SetVolumeUnavailable()
     _slider->setEnabled(false);
     _speakerGlyph->setEnabled(false);
     _volumeValue->setText(QStringLiteral("\u2014"));
-    _slider->setAccessibleDescription(tr("Geluidsniveau niet beschikbaar"));
-    _slider->setToolTip(tr("Geluidsniveau niet beschikbaar"));
+    _slider->setAccessibleDescription(tr("Volume unavailable"));
+    _slider->setToolTip(tr("Volume unavailable"));
 }
 
 void PopupControlPanel::RefreshVolume()
@@ -591,10 +605,10 @@ void PopupControlPanel::SetNoiseControlState(std::optional<NoiseControlMode> mod
         button->setCursor(available ? Qt::PointingHandCursor : Qt::ArrowCursor);
         button->setChecked(isSelected);
         button->setAccessibleDescription(
-            available ? (isSelected ? tr("Geselecteerd") : tr("Niet geselecteerd"))
-                      : tr("Niet beschikbaar"));
+            available ? (isSelected ? tr("Selected") : tr("Not selected"))
+                      : tr("Unavailable"));
         button->setToolTip(available ? ModeName(_buttonModes[i])
-                                     : tr("AirPods-bediening niet beschikbaar"));
+                                     : tr("Noise Control is unavailable on Windows"));
     }
     _modeGroup->setExclusive(true);
     _unavailableStatus->setVisible(!available);

@@ -134,10 +134,24 @@ private Q_SLOTS:
             QCOMPARE(
                 panel.findChild<QLabel *>("noiseControlLabel")->text(), QString{"Noise Control"});
             QCOMPARE(panel.findChild<QLabel *>("unavailableStatus")->isVisible(), true);
+            const auto appearanceCapture =
+                panel.grab().toImage().convertToFormat(QImage::Format_RGB32);
+            const auto surfaceSample = QColor::fromRgb(appearanceCapture.pixel(
+                appearanceCapture.width() - 10, appearanceCapture.height() / 2));
+            // One saturated cyan-teal control surface in either host appearance: reject both the
+            // earlier pale panel and the charcoal nested card while preserving white-text contrast.
+            QVERIFY(surfaceSample.green() >= surfaceSample.red() + 70);
+            QVERIFY(surfaceSample.blue() >= surfaceSample.red() + 90);
+            QVERIFY(surfaceSample.blue() > surfaceSample.green());
+            QVERIFY(qGray(surfaceSample.rgb()) >= 70);
+            QVERIFY(qGray(surfaceSample.rgb()) <= 120);
             auto *volumeSlider = panel.findChild<QSlider *>("volumeSlider");
             QVERIFY(volumeSlider != nullptr);
             QCOMPARE(volumeSlider->orientation(), Qt::Horizontal);
             QVERIFY(volumeSlider->minimumHeight() >= 28);
+            // The compact macOS geometry is a 4 pt rail, but the 20 pt thumb remains
+            // comfortably inside this taller interactive hit target.
+            QVERIFY(volumeSlider->height() >= 20);
             QVERIFY(volumeSlider->sizeHint().width() <= 176);
             QVERIFY(panel.findChild<QFrame *>("controlSeparator") != nullptr);
             for (auto *button : panel.findChildren<QPushButton *>()) {
