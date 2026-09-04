@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QAbstractButton>
 #include <QColor>
 #include <QDir>
 #include <QFontMetrics>
@@ -8,10 +9,12 @@
 #include <QPalette>
 #include <QPixmap>
 #include <QScreen>
+#include <QStringList>
 #include <QPushButton>
 #include <QTest>
 #include <QVideoWidget>
 #include <QWindow>
+#include <QtMath>
 
 #include "Source/Core/AirPods.h"
 #if defined APD_OS_WIN
@@ -91,6 +94,30 @@ class MainWindowVisualTests final : public QObject
         return samples > 0 && brightSamples * 2 > samples;
     }
 
+    static bool HasCloseFocusRing(
+        const QPixmap &popup, const QWidget &closeButton, const QWidget &window)
+    {
+        const auto image = popup.toImage().convertToFormat(QImage::Format_RGB32);
+        const auto origin = closeButton.mapTo(&window, QPoint{});
+        const auto scale = popup.devicePixelRatio();
+        const QRect closeRect{
+            qRound(origin.x() * scale), qRound(origin.y() * scale),
+            qRound(closeButton.width() * scale), qRound(closeButton.height() * scale)};
+        const auto cropped = image.copy(closeRect.intersected(image.rect()));
+        int bluePixels = 0;
+        for (int y = 0; y < cropped.height(); ++y) {
+            for (int x = 0; x < cropped.width(); ++x) {
+                const auto color = QColor::fromRgb(cropped.pixel(x, y));
+                if (color.red() < 60 && color.green() > 80 && color.green() < 190 &&
+                    color.blue() > 180)
+                {
+                    ++bluePixels;
+                }
+            }
+        }
+        return bluePixels >= 12;
+    }
+
 private Q_SLOTS:
     void convertsEndpointVolumeToPercent()
     {
@@ -166,12 +193,21 @@ private Q_SLOTS:
         }
     }
 
-    void completePopupHandlesLongDeviceName()
+    void completePopupPreservesAnimationAndDesign()
     {
         const QString dir = qEnvironmentVariable("APD_VISUAL_DIR");
         if (!dir.isEmpty()) {
             QVERIFY(QDir{}.mkpath(dir));
         }
+
+        const QStringList deviceNames{
+            "Jop's AirPods Pro 2 - Aerospace Engineering",
+            "AirPods Pro",
+        };
+        const QStringList fileNames{
+            "complete-popup-light-long-name.png",
+            "complete-popup-light-airpods-pro.png",
+        };
 
         for (const bool dark : {false, true}) {
             QPalette palette;
@@ -180,45 +216,65 @@ private Q_SLOTS:
                 QPalette::WindowText, dark ? QColor{242, 242, 247} : QColor{28, 28, 30});
             qApp->setPalette(palette);
 
-            Gui::MainWindow window{nullptr, false};
-            Core::AirPods::State state;
-            state.displayName = "Jop's AirPods Pro 2 - Aerospace Engineering";
-            state.model = Core::AirPods::Model::AirPods_Pro_2;
-            state.pods.left.battery = 100;
-            state.pods.right.battery = 86;
-            state.caseBox.battery = 54;
-            state.pods.right.isCharging = true;
-            window.UpdateState(state);
+            for (int i = 0; i < deviceNames.size(); ++i) {
+                Gui::MainWindow window{nullptr, false};
+                Core::AirPods::State state;
+                state.displayName = deviceNames[i];
+                state.model = Core::AirPods::Model::AirPods_Pro_2;
+                state.pods.left.battery = 100;
+                state.pods.right.battery = 86;
+                state.caseBox.battery = 54;
+                state.pods.right.isCharging = true;
+                window.UpdateState(state);
 
-            auto *controls = window.findChild<Gui::PopupControlPanel *>("popupControlPanel");
-            QVERIFY(controls != nullptr);
-            controls->SetPreviewVolume(50);
-            window.ensurePolished();
-            window.resize(window.sizeHint().expandedTo(QSize{360, 520}));
-            QCoreApplication::processEvents();
+                auto *controls = window.findChild<Gui::PopupControlPanel *>("popupControlPanel");
+                QVERIFY(controls != nullptr);
+                controls->SetPreviewVolume(50);
+                window.ensurePolished();
+                window.resize(window.sizeHint().expandedTo(QSize{360, 520}));
+                QCoreApplication::processEvents();
 
-            QVERIFY(window.width() >= 360);
-            QVERIFY(window.height() >= window.minimumSizeHint().height());
-            auto *deviceLabel = window.findChild<QLabel *>("deviceLabel");
-            QVERIFY(deviceLabel != nullptr);
-            QVERIFY(deviceLabel->geometry().right() <= window.width());
-            QVERIFY(
-                QFontMetrics{deviceLabel->font()}.horizontalAdvance(deviceLabel->text()) <=
-                deviceLabel->contentsRect().width());
-            QCOMPARE(deviceLabel->toolTip(), state.displayName);
+                // The AVI is opaque light artwork, so the whole pairing surface deliberately
+                // remains light even while the host application uses a dark palette.
+                QCOMPARE(window.palette().color(QPalette::Window), QColor{250, 250, 252});
+                QCOMPARE(controls->palette().color(QPalette::Window), QColor{250, 250, 252});
+                QVERIFY(window.width() >= 360);
+                QVERIFY(window.height() >= window.minimumSizeHint().height());
+                auto *deviceLabel = window.findChild<QLabel *>("deviceLabel");
+                QVERIFY(deviceLabel != nullptr);
+                QVERIFY(deviceLabel->geometry().right() <= window.width());
+                QVERIFY(
+                    QFontMetrics{deviceLabel->font()}.horizontalAdvance(deviceLabel->text()) <=
+                    deviceLabel->contentsRect().width());
+                QCOMPARE(deviceLabel->toolTip(), state.displayName);
 
-            ShowAndWaitForDecodedAnimation(window);
-            auto *videoWidget = window.findChild<QVideoWidget *>();
-            QVERIFY(videoWidget != nullptr);
+                ShowAndWaitForDecodedAnimation(window);
+                auto *videoWidget = window.findChild<QVideoWidget *>();
+                QVERIFY(videoWidget != nullptr);
+                auto *closeButton = window.findChild<QAbstractButton *>("closeButton");
+                QVERIFY(closeButton != nullptr);
 
-            QPixmap popup;
-            GrabVisiblePopup(window, popup);
-            QVERIFY2(
-                HasVisibleVideoFrame(popup, *videoWidget, window),
-                "The native popup screenshot did not contain a decoded AirPods AVI frame.");
-            if (!dir.isEmpty()) {
-                QVERIFY(popup.save(QDir{dir}.filePath(
-                    QString{"complete-popup-%1-long-name.png"}.arg(dark ? "dark" : "light"))));
+                // An automatic/assistive focus must not suggest that the close affordance is
+                // already active.  Explicit keyboard traversal still gets the visible ring.
+                closeButton->setFocus(Qt::OtherFocusReason);
+                QTRY_VERIFY_WITH_TIMEOUT(closeButton->hasFocus(), 1000);
+
+                QPixmap popup;
+                GrabVisiblePopup(window, popup);
+                QVERIFY(!HasCloseFocusRing(popup, *closeButton, window));
+                closeButton->clearFocus();
+                QTRY_VERIFY_WITH_TIMEOUT(!closeButton->hasFocus(), 1000);
+                closeButton->setFocus(Qt::TabFocusReason);
+                QTRY_VERIFY_WITH_TIMEOUT(closeButton->hasFocus(), 1000);
+                QPixmap keyboardFocusPopup;
+                GrabVisiblePopup(window, keyboardFocusPopup);
+                QVERIFY(HasCloseFocusRing(keyboardFocusPopup, *closeButton, window));
+                QVERIFY2(
+                    HasVisibleVideoFrame(popup, *videoWidget, window),
+                    "The native popup screenshot did not contain a decoded AirPods AVI frame.");
+                if (!dir.isEmpty() && !dark) {
+                    QVERIFY(popup.save(QDir{dir}.filePath(fileNames[i])));
+                }
             }
         }
     }

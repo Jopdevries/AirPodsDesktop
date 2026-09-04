@@ -21,6 +21,7 @@
 #include <QAbstractButton>
 #include <QScreen>
 #include <QCursor>
+#include <QFocusEvent>
 #include <QFontMetrics>
 #include <QPainter>
 #include <QMessageBox>
@@ -51,6 +52,7 @@ public:
     {
         setFixedSize(32, 32);
         setFocusPolicy(Qt::StrongFocus);
+        setObjectName("closeButton");
         setAccessibleName(QObject::tr("Sluiten"));
         setToolTip(QObject::tr("Sluiten"));
     }
@@ -82,7 +84,7 @@ protected:
             painter.setBrush(QBrush{color});
             painter.drawEllipse(rect());
 
-            if (hasFocus()) {
+            if (_showKeyboardFocus) {
                 painter.setPen(QPen{QColor{0, 122, 255}, 2});
                 painter.setBrush(Qt::NoBrush);
                 painter.drawEllipse(rect().adjusted(1, 1, -1, -1));
@@ -111,6 +113,27 @@ protected:
         }
         painter.restore();
     }
+
+    void focusInEvent(QFocusEvent *event) override
+    {
+        // Qt can give the first button focus when a tool window is shown.  That is useful for
+        // assistive technology, but it must not look like a pointer hover or a user action.
+        // Reserve the visible ring for explicit keyboard traversal.
+        _showKeyboardFocus = event->reason() == Qt::TabFocusReason ||
+            event->reason() == Qt::BacktabFocusReason;
+        QAbstractButton::focusInEvent(event);
+        update();
+    }
+
+    void focusOutEvent(QFocusEvent *event) override
+    {
+        _showKeyboardFocus = false;
+        QAbstractButton::focusOutEvent(event);
+        update();
+    }
+
+private:
+    bool _showKeyboardFocus{false};
 };
 
 //////////////////////////////////////////////////
@@ -191,24 +214,29 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(windowFlags() | Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
 
-    const bool dark = qGray(qApp->palette().color(QPalette::Window).rgb()) < 128;
+    // The bundled Apple pairing AVI has an opaque light background.  Keep the complete pairing
+    // surface light until we can ship alpha-capable artwork; otherwise Dark Mode produces a
+    // conspicuous white video rectangle that breaks the visual continuity of the animation.
+    // This also matches Apple's light pairing card rather than pretending that the AVI supports
+    // a dark appearance.
+    auto popupPalette = palette();
+    popupPalette.setColor(QPalette::Window, QColor{250, 250, 252});
+    popupPalette.setColor(QPalette::WindowText, QColor{28, 28, 30});
+    popupPalette.setColor(QPalette::Base, Qt::white);
+    popupPalette.setColor(QPalette::Text, QColor{28, 28, 30});
+    popupPalette.setColor(QPalette::Button, QColor{229, 229, 234});
+    popupPalette.setColor(QPalette::ButtonText, QColor{28, 28, 30});
+    setPalette(popupPalette);
+    setAutoFillBackground(true);
     Utils::Qt::SetRoundedCorners(this, _windowCornerRadius);
     Utils::Qt::SetRoundedCorners(_ui.pushButton, 6);
-    Utils::Qt::SetPaletteColor(
-        this, QPalette::Window, dark ? QColor{28, 28, 30} : QColor{250, 250, 252});
-    Utils::Qt::SetPaletteColor(
-        _ui.deviceLabel, QPalette::WindowText,
-        dark ? QColor{242, 242, 247} : QColor{28, 28, 30});
-    _ui.controlSeparator->setStyleSheet(
-        dark ? "color: rgba(235,235,245,51);" : "color: rgba(60,60,67,51);");
+    Utils::Qt::SetPaletteColor(this, QPalette::Window, QColor{250, 250, 252});
+    Utils::Qt::SetPaletteColor(_ui.deviceLabel, QPalette::WindowText, QColor{28, 28, 30});
+    _ui.controlSeparator->setStyleSheet("color: rgba(60,60,67,51);");
     _ui.pushButton->setStyleSheet(
-        dark
-            ? "QPushButton { min-height: 41px; border: 0; border-radius: 10px; "
-              "background: #3a3a3c; color: #f2f2f7; } QPushButton:hover { background: #48484a; "
-              "} QPushButton:focus { border: 2px solid #0a84ff; }"
-            : "QPushButton { min-height: 41px; border: 0; border-radius: 10px; "
-              "background: #e5e5ea; color: #1c1c1e; } QPushButton:hover { background: #d1d1d6; "
-              "} QPushButton:focus { border: 2px solid #007aff; }");
+        "QPushButton { min-height: 41px; border: 0; border-radius: 10px; "
+        "background: #e5e5ea; color: #1c1c1e; } QPushButton:hover { background: #d1d1d6; "
+        "} QPushButton:focus { border: 2px solid #007aff; }");
 
     _controlPanel = new PopupControlPanel{this};
     _controlPanel->SetNoiseControlState(std::nullopt, false);
