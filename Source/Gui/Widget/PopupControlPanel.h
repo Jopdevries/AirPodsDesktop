@@ -13,6 +13,8 @@ class QTimer;
 
 namespace Gui {
 
+class SpeakerGlyph;
+
 class PopupControlPanel final : public QFrame
 {
     Q_OBJECT
@@ -32,6 +34,7 @@ Q_SIGNALS:
     void NoiseControlRequested(Gui::PopupControlPanel::NoiseControlMode mode);
 
 private:
+    SpeakerGlyph *_speakerGlyph{};
     QSlider *_slider{};
     QLabel *_volumeValue{};
     QLabel *_unavailableStatus{};

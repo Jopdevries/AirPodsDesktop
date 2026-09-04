@@ -111,6 +111,7 @@ private:
     void VersionUpdateAvailable(const Core::Update::ReleaseInfo &releaseInfo, bool silent);
     void Repaint();
     void FitDeviceLabelFont();
+    void ResizeAnimationWidget();
 
     void OnAppStateChanged(Qt::ApplicationState state);
     void OnPosMoveFinished();
@@ -120,6 +121,7 @@ private:
 
     void DoHide();
     void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
     UTILS_QT_DISABLE_ESC_QUIT(QDialog);
     UTILS_QT_REGISTER_LANGUAGECHANGE(QDialog, [this] {

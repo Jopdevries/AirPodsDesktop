@@ -1,10 +1,17 @@
 #include <QApplication>
+#include <QColor>
 #include <QDir>
 #include <QFontMetrics>
+#include <QImage>
 #include <QLabel>
+#include <QMediaPlayer>
 #include <QPalette>
+#include <QPixmap>
+#include <QScreen>
 #include <QPushButton>
 #include <QTest>
+#include <QVideoWidget>
+#include <QWindow>
 
 #include "Source/Core/AirPods.h"
 #if defined APD_OS_WIN
@@ -16,6 +23,74 @@
 class MainWindowVisualTests final : public QObject
 {
     Q_OBJECT
+
+    static void ShowAndWaitForDecodedAnimation(Gui::MainWindow &window)
+    {
+        // QVideoWidget renders through the native multimedia surface on Windows.  A QWidget
+        // grab before the dialog is shown omits that surface, yielding a misleading empty box.
+        window.show();
+        window.raise();
+        window.activateWindow();
+
+        QTRY_VERIFY_WITH_TIMEOUT(window.isVisible(), 1000);
+        QTRY_VERIFY_WITH_TIMEOUT(window.windowHandle() != nullptr, 1000);
+
+        auto *player = window.findChild<QMediaPlayer *>();
+        auto *videoWidget = window.findChild<QVideoWidget *>();
+        QVERIFY(player != nullptr);
+        QVERIFY(videoWidget != nullptr);
+
+        QTRY_VERIFY_WITH_TIMEOUT(videoWidget->isVisible(), 1000);
+        QTRY_VERIFY_WITH_TIMEOUT(player->state() == QMediaPlayer::PlayingState, 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(player->isVideoAvailable(), 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(player->position() > 100, 3000);
+
+        // Allow the show transition and a decoded frame to be presented before capture.
+        QTest::qWait(300);
+    }
+
+    static void GrabVisiblePopup(Gui::MainWindow &window, QPixmap &popup)
+    {
+        auto *screen = window.windowHandle()->screen();
+        QVERIFY(screen != nullptr);
+
+        // Screen capture, rather than QWidget::grab(), includes the native QVideoWidget
+        // surface used by Qt 5 Multimedia on Windows.
+        popup = screen->grabWindow(window.winId());
+        QVERIFY(!popup.isNull());
+    }
+
+    static bool HasVisibleVideoFrame(
+        const QPixmap &popup, const QWidget &videoWidget, const QWidget &window)
+    {
+        const auto image = popup.toImage().convertToFormat(QImage::Format_RGB32);
+        const auto videoOrigin = videoWidget.mapTo(&window, QPoint{});
+        const auto scale = popup.devicePixelRatio();
+        const QRect videoRect{
+            qRound(videoOrigin.x() * scale), qRound(videoOrigin.y() * scale),
+            qRound(videoWidget.width() * scale), qRound(videoWidget.height() * scale)};
+        const auto cropped = image.copy(videoRect.intersected(image.rect()));
+        if (cropped.isNull()) {
+            return false;
+        }
+
+        // An uninitialised DirectShow surface is solid black.  The shipped AVI has a bright
+        // background, so a single bright sample proves that the native capture contains video.
+        constexpr int sampleStep = 4;
+        int samples = 0;
+        int brightSamples = 0;
+        for (int y = 0; y < cropped.height(); y += sampleStep) {
+            for (int x = 0; x < cropped.width(); x += sampleStep) {
+                const auto color = QColor::fromRgb(cropped.pixel(x, y));
+                ++samples;
+                if (color.red() > 180 && color.green() > 180 && color.blue() > 180) {
+                    ++brightSamples;
+                }
+            }
+        }
+        return samples > 0 && brightSamples * 2 > samples;
+    }
+
 private Q_SLOTS:
     void initTestCase()
     {
@@ -139,8 +214,17 @@ private Q_SLOTS:
                 deviceLabel->contentsRect().width());
             QCOMPARE(deviceLabel->toolTip(), state.displayName);
 
+            ShowAndWaitForDecodedAnimation(window);
+            auto *videoWidget = window.findChild<QVideoWidget *>();
+            QVERIFY(videoWidget != nullptr);
+
+            QPixmap popup;
+            GrabVisiblePopup(window, popup);
+            QVERIFY2(
+                HasVisibleVideoFrame(popup, *videoWidget, window),
+                "The native popup screenshot did not contain a decoded AirPods AVI frame.");
             if (!dir.isEmpty()) {
-                QVERIFY(window.grab().save(QDir{dir}.filePath(
+                QVERIFY(popup.save(QDir{dir}.filePath(
                     QString{"complete-popup-%1-long-name.png"}.arg(dark ? "dark" : "light"))));
             }
         }

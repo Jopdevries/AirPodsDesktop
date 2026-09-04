@@ -25,6 +25,7 @@
 #include <QPainter>
 #include <QMessageBox>
 #include <QFontDatabase>
+#include <QResizeEvent>
 
 #include <Config.h>
 #include "../Helper.h"
@@ -238,6 +239,7 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
     _mediaPlayer->setVideoOutput(_videoWidget);
 
     _ui.layoutAnimation->addWidget(_videoWidget);
+    _ui.layoutAnimation->setAlignment(_videoWidget, Qt::AlignCenter);
     _ui.layoutPods->addWidget(_leftBattery);
     _ui.layoutPods->addWidget(_rightBattery);
     _ui.layoutCase->addWidget(_caseBattery);
@@ -399,11 +401,6 @@ void MainWindow::SetAnimation(std::optional<Core::AirPods::Model> model)
     else {
         const auto presentation = GetAnimationPresentation(model.value());
 
-        auto aspectRatio =
-            (float)presentation.sourceSize.width() / (float)presentation.sourceSize.height();
-        auto widgetWidth = _videoWidget->height() * aspectRatio;
-        _videoWidget->setFixedWidth(widgetWidth);
-
         _mediaPlayer->setMedia(QUrl{presentation.resource});
 
         if (_isVisible) {
@@ -415,6 +412,28 @@ void MainWindow::SetAnimation(std::optional<Core::AirPods::Model> model)
     }
 
     _cacheModel = model;
+    ResizeAnimationWidget();
+}
+
+void MainWindow::ResizeAnimationWidget()
+{
+    if (!_cacheModel.has_value()) {
+        return;
+    }
+
+    const auto presentation = GetAnimationPresentation(_cacheModel.value());
+    const auto containerSize = _ui.gridLayoutWidget->contentsRect().size();
+    if (containerSize.height() <= 0 || presentation.sourceSize.height() <= 0) {
+        return;
+    }
+
+    const auto aspectRatio = static_cast<double>(presentation.sourceSize.width()) /
+        static_cast<double>(presentation.sourceSize.height());
+    const auto height = containerSize.height();
+    const auto width = qMin(containerSize.width(), qRound(height * aspectRatio));
+    if (width > 0) {
+        _videoWidget->setFixedSize(width, height);
+    }
 }
 
 void MainWindow::PlayAnimation()
@@ -687,6 +706,12 @@ void MainWindow::showEvent(QShowEvent *event)
     _posAnimation.setStartValue(pos());
     _posAnimation.setEndValue(QPoint{targetX, targetY});
     _posAnimation.start();
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QDialog::resizeEvent(event);
+    ResizeAnimationWidget();
 }
 } // namespace Gui
 
