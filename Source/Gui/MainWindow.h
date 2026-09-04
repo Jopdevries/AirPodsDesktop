@@ -74,7 +74,7 @@ Q_SIGNALS:
 private:
     constexpr static int _windowMinimumWidth = 320;
     constexpr static QSize _screenMargin{24, 24};
-    constexpr static qreal _windowCornerRadius = 20.0;
+    constexpr static qreal _windowCornerRadius = 32.0;
     constexpr static int _deviceLabelMaximumPointSize = 18;
     constexpr static int _deviceLabelMinimumPointSize = 13;
 
@@ -120,6 +120,7 @@ private:
     void OnPlayerStateChanged(QMediaPlayer::State newState);
 
     void DoHide();
+    void paintEvent(QPaintEvent *event) override;
     void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 

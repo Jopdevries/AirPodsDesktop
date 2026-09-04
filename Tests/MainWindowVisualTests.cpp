@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QDir>
 #include <QFontMetrics>
+#include <QFrame>
 #include <QImage>
 #include <QLabel>
 #include <QMediaPlayer>
@@ -11,6 +12,7 @@
 #include <QScreen>
 #include <QStringList>
 #include <QPushButton>
+#include <QSlider>
 #include <QTest>
 #include <QVideoWidget>
 #include <QWindow>
@@ -121,19 +123,35 @@ private Q_SLOTS:
 
             Gui::PopupControlPanel panel;
             panel.setPalette(palette);
-            panel.resize(320, panel.sizeHint().height());
+            panel.resize(300, panel.sizeHint().height());
             panel.show();
             QCoreApplication::processEvents();
 
+            QVERIFY(panel.minimumSizeHint().width() <= 300);
             QVERIFY(panel.height() >= panel.minimumSizeHint().height());
             QCOMPARE(panel.findChildren<QPushButton *>().size(), 4);
-            QCOMPARE(panel.findChild<QLabel *>("sectionLabel")->text(), QString{"Geluidsniveau"});
+            QCOMPARE(panel.findChild<QLabel *>("sectionLabel")->text(), QString{"Sound"});
+            QCOMPARE(
+                panel.findChild<QLabel *>("noiseControlLabel")->text(), QString{"Noise Control"});
             QCOMPARE(panel.findChild<QLabel *>("unavailableStatus")->isVisible(), true);
+            auto *volumeSlider = panel.findChild<QSlider *>("volumeSlider");
+            QVERIFY(volumeSlider != nullptr);
+            QCOMPARE(volumeSlider->orientation(), Qt::Horizontal);
+            QVERIFY(volumeSlider->minimumHeight() >= 28);
+            QVERIFY(volumeSlider->sizeHint().width() <= 176);
+            QVERIFY(panel.findChild<QFrame *>("controlSeparator") != nullptr);
             for (auto *button : panel.findChildren<QPushButton *>()) {
                 QVERIFY(!button->isChecked());
                 QVERIFY(!button->isEnabled());
-                QVERIFY(button->minimumHeight() >= 44);
+                QVERIFY(button->minimumHeight() >= 28);
                 QVERIFY(!button->accessibleName().isEmpty());
+            }
+
+            const QStringList expectedLabels{
+                "Noise Cancellation", "Transparency", "Adaptive", "Off"};
+            const auto buttons = panel.findChildren<QPushButton *>();
+            for (int i = 0; i < buttons.size(); ++i) {
+                QCOMPARE(buttons[i]->text(), expectedLabels[i]);
             }
 
             for (const int volume : {0, 50, 100}) {
@@ -214,7 +232,6 @@ private Q_SLOTS:
                 // The AVI is opaque light artwork, so the whole pairing surface deliberately
                 // remains light even while the host application uses a dark palette.
                 QCOMPARE(window.palette().color(QPalette::Window), expectedPopupSurface);
-                QCOMPARE(controls->palette().color(QPalette::Window), expectedPopupSurface);
                 QVERIFY(window.width() >= 320);
                 QVERIFY(window.height() >= window.minimumSizeHint().height());
                 auto *deviceLabel = window.findChild<QLabel *>("deviceLabel");
@@ -259,6 +276,10 @@ int main(int argc, char *argv[])
     Core::OS::Windows::Winrt::Initialize();
 #endif
 
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+    QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
     QApplication application{argc, argv};
     MainWindowVisualTests tests;
     return QTest::qExec(&tests, argc, argv);

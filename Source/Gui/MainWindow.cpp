@@ -25,6 +25,7 @@
 #include <QFontMetrics>
 #include <QPainter>
 #include <QMessageBox>
+#include <QPaintEvent>
 #include <QFontDatabase>
 #include <QResizeEvent>
 
@@ -50,7 +51,7 @@ public:
     CloseButton(QWidget *parent = nullptr)
         : QAbstractButton{parent}
     {
-        setFixedSize(28, 28);
+        setFixedSize(30, 30);
         setFocusPolicy(Qt::StrongFocus);
         setObjectName("closeButton");
         setAccessibleName(QObject::tr("Sluiten"));
@@ -212,6 +213,7 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
     setMinimumWidth(_windowMinimumWidth);
     setFont(QFontDatabase::systemFont(QFontDatabase::GeneralFont));
     setAttribute(Qt::WA_DeleteOnClose);
+    setAttribute(Qt::WA_TranslucentBackground);
     setWindowFlags(windowFlags() | Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
 
     // The bundled Apple pairing AVI has an opaque light background.  Keep the complete pairing
@@ -227,9 +229,7 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
     popupPalette.setColor(QPalette::Button, QColor{229, 229, 234});
     popupPalette.setColor(QPalette::ButtonText, QColor{28, 28, 30});
     setPalette(popupPalette);
-    setAutoFillBackground(true);
-    Utils::Qt::SetRoundedCorners(this, _windowCornerRadius);
-    Utils::Qt::SetRoundedCorners(_ui.pushButton, 6);
+    setAutoFillBackground(false);
     Utils::Qt::SetPaletteColor(this, QPalette::Window, QColor{250, 250, 252});
     Utils::Qt::SetPaletteColor(_ui.deviceLabel, QPalette::WindowText, QColor{28, 28, 30});
     _ui.controlSeparator->setStyleSheet("color: rgba(60,60,67,51);");
@@ -481,10 +481,10 @@ void MainWindow::ResizeAnimationWidget()
 
     const auto aspectRatio = static_cast<double>(presentation.sourceSize.width()) /
         static_cast<double>(presentation.sourceSize.height());
-    // At the 320 logical-pixel pairing-card width this is exactly 300 x 150. Keeping the
-    // decoded 2:1 frame at that integer size avoids interpolation artifacts at 150% DPI.
-    const auto height = qMin(containerSize.height(), 150);
-    const auto width = qMin(qMin(containerSize.width(), 300), qRound(height * aspectRatio));
+    // The original 320 px pairing card presents the supplied 2:1 AirPods AVI at exactly
+    // 240 x 120 logical pixels. This avoids an additional non-integer scaling step at 150% DPI.
+    const auto height = qMin(containerSize.height(), 120);
+    const auto width = qMin(qMin(containerSize.width(), 240), qRound(height * aspectRatio));
     if (width > 0) {
         _videoWidget->setFixedSize(width, height);
     }
@@ -752,7 +752,6 @@ void MainWindow::showEvent(QShowEvent *event)
     const auto targetY = availableGeometry.bottom() - height() + 1 - _screenMargin.height();
 
     move(targetX, screenGeometry.bottom() + 1);
-    Utils::Qt::SetRoundedCorners(this, _windowCornerRadius);
 
     _posAnimation.stop();
     _posAnimation.setDuration(260);
@@ -760,6 +759,21 @@ void MainWindow::showEvent(QShowEvent *event)
     _posAnimation.setStartValue(pos());
     _posAnimation.setEndValue(QPoint{targetX, targetY});
     _posAnimation.start();
+}
+
+void MainWindow::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event);
+
+    // A bitmap/window-region mask clips on whole physical pixels and leaves stair-stepped
+    // corners at common Windows scale factors. A translucent top-level surface lets Qt blend
+    // the curved edge in device pixels instead.
+    QPainter painter{this};
+    painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
+    const QRectF surface = QRectF{rect()}.adjusted(0.5, 0.5, -0.5, -0.5);
+    painter.setPen(QPen{QColor{60, 60, 67, 24}, 1.0});
+    painter.setBrush(palette().color(QPalette::Window));
+    painter.drawRoundedRect(surface, _windowCornerRadius, _windowCornerRadius);
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)

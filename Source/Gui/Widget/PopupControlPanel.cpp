@@ -40,7 +40,7 @@ QString ModeName(PopupControlPanel::NoiseControlMode mode)
 {
     switch (mode) {
     case PopupControlPanel::NoiseControlMode::ANC:
-        return PopupControlPanel::tr("ANC");
+        return PopupControlPanel::tr("Noise Cancellation");
     case PopupControlPanel::NoiseControlMode::Transparency:
         return PopupControlPanel::tr("Transparency");
     case PopupControlPanel::NoiseControlMode::Adaptive:
@@ -49,11 +49,6 @@ QString ModeName(PopupControlPanel::NoiseControlMode mode)
         return PopupControlPanel::tr("Off");
     }
     return {};
-}
-
-QString ModeButtonText(PopupControlPanel::NoiseControlMode mode)
-{
-    return ModeName(mode);
 }
 
 void DrawNoiseGlyph(QPainter &painter, PopupControlPanel::NoiseControlMode mode,
@@ -119,18 +114,18 @@ void DrawNoiseGlyph(QPainter &painter, PopupControlPanel::NoiseControlMode mode,
     painter.restore();
 }
 
-class AppleVerticalVolumeSlider final : public QSlider
+class AppleHorizontalVolumeSlider final : public QSlider
 {
 public:
-    explicit AppleVerticalVolumeSlider(QWidget *parent = nullptr) : QSlider{Qt::Vertical, parent}
+    explicit AppleHorizontalVolumeSlider(QWidget *parent = nullptr)
+        : QSlider{Qt::Horizontal, parent}
     {
-        setFixedSize(76, 128);
+        setMinimumHeight(28);
         setFocusPolicy(Qt::StrongFocus);
-        setInvertedAppearance(true);
     }
 
-    QSize sizeHint() const override { return {76, 128}; }
-    QSize minimumSizeHint() const override { return {76, 112}; }
+    QSize sizeHint() const override { return {176, 28}; }
+    QSize minimumSizeHint() const override { return {120, 28}; }
 
 protected:
     void paintEvent(QPaintEvent *) override
@@ -140,52 +135,55 @@ protected:
         painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
         const bool dark = IsDark(this);
-        const QRectF track{8.0, 2.0, width() - 16.0, height() - 4.0};
+        constexpr qreal thumbDiameter = 18.0;
+        constexpr qreal trackHeight = 6.0;
+        const QRectF bounds = rect();
+        const qreal left = bounds.left() + thumbDiameter / 2.0;
+        const qreal span = qMax<qreal>(0.0, bounds.width() - thumbDiameter);
         const qreal fraction = maximum() == minimum()
             ? 0.0
             : (value() - minimum()) / qreal(maximum() - minimum());
-        const qreal fillTop = track.bottom() - track.height() * fraction;
-        QPainterPath clipping;
-        clipping.addRoundedRect(track, track.width() / 2.0, track.width() / 2.0);
+        const qreal thumbX = left + span * fraction;
+        const QRectF track{left, bounds.center().y() - trackHeight / 2.0, span, trackHeight};
 
         if (hasFocus() && isEnabled()) {
             QColor focus = dark ? QColor{"#0A84FF"} : QColor{"#007AFF"};
-            focus.setAlpha(105);
-            painter.setPen(QPen{focus, 3.0});
+            focus.setAlpha(115);
+            painter.setPen(QPen{focus, 3.0, Qt::SolidLine, Qt::RoundCap});
             painter.setBrush(Qt::NoBrush);
-            painter.drawRoundedRect(track.adjusted(-3.0, -3.0, 3.0, 3.0),
-                                    track.width() / 2.0 + 3.0, track.width() / 2.0 + 3.0);
+            painter.drawLine(QPointF{track.left(), track.center().y()},
+                             QPointF{track.right(), track.center().y()});
         }
 
-        painter.save();
-        painter.setClipPath(clipping);
-        QLinearGradient upper{track.topLeft(), track.bottomRight()};
-        upper.setColorAt(0.0, ColorFor(dark, QColor{"#7891A5"}, QColor{"#555B63"}));
-        upper.setColorAt(1.0, ColorFor(dark, QColor{"#4D6172"}, QColor{"#32363C"}));
-        painter.fillRect(track, upper);
+        const QColor inactive = ColorFor(dark, QColor{"#C7C7CC"}, QColor{"#48484A"});
+        const QColor active = dark ? QColor{"#0A84FF"} : QColor{"#007AFF"};
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(
+            isEnabled() ? inactive : ColorFor(dark, QColor{"#D1D1D6"}, QColor{"#3A3A3C"}));
+        painter.drawRoundedRect(track, trackHeight / 2.0, trackHeight / 2.0);
 
+        QRectF filled = track;
+        filled.setRight(thumbX);
+        painter.setBrush(
+            isEnabled() ? active : ColorFor(dark, QColor{"#AEAEB2"}, QColor{"#636366"}));
+        painter.drawRoundedRect(filled, trackHeight / 2.0, trackHeight / 2.0);
+
+        const QPointF thumb{thumbX, bounds.center().y()};
         if (isEnabled()) {
-            QLinearGradient fill{QPointF{track.center().x(), fillTop}, track.bottomLeft()};
-            fill.setColorAt(0.0, ColorFor(dark, QColor{"#FFFFFF"}, QColor{"#F5F5F7"}));
-            fill.setColorAt(1.0, ColorFor(dark, QColor{"#F4FAFD"}, QColor{"#E5E5EA"}));
-            painter.fillRect(QRectF{track.left(), fillTop, track.width(), track.bottom() - fillTop},
-                             fill);
-            if (fraction > 0.0 && fraction < 1.0) {
-                painter.setPen(QPen{QColor{255, 255, 255, 115}, 1.0});
-                painter.drawLine(QPointF{track.left(), fillTop}, QPointF{track.right(), fillTop});
-            }
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor{0, 0, 0, dark ? 72 : 34});
+            painter.drawEllipse(thumb + QPointF{0.0, 1.0}, thumbDiameter / 2.0,
+                                thumbDiameter / 2.0);
         }
-        else {
-            painter.fillRect(track, ColorFor(dark, QColor{"#C7C7CC"}, QColor{"#48484A"}));
-        }
-        painter.restore();
+        painter.setBrush(isEnabled() ? QColor{"#FFFFFF"} : QColor{"#D1D1D6"});
+        painter.drawEllipse(thumb, thumbDiameter / 2.0, thumbDiameter / 2.0);
     }
 
     void mousePressEvent(QMouseEvent *event) override
     {
         if (event->button() == Qt::LeftButton) {
             setSliderDown(true);
-            SetValueFromPosition(event->pos().y());
+            SetValueFromPosition(event->pos().x());
             event->accept();
             return;
         }
@@ -195,7 +193,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override
     {
         if (isSliderDown()) {
-            SetValueFromPosition(event->pos().y());
+            SetValueFromPosition(event->pos().x());
             event->accept();
             return;
         }
@@ -205,7 +203,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override
     {
         if (event->button() == Qt::LeftButton && isSliderDown()) {
-            SetValueFromPosition(event->pos().y());
+            SetValueFromPosition(event->pos().x());
             setSliderDown(false);
             event->accept();
             return;
@@ -214,13 +212,13 @@ protected:
     }
 
 private:
-    void SetValueFromPosition(int y)
+    void SetValueFromPosition(int x)
     {
-        constexpr int inset = 2;
-        const int span = qMax(1, height() - inset * 2);
-        const int position = qBound(0, y - inset, span);
+        constexpr int thumbDiameter = 18;
+        const int span = qMax(1, width() - thumbDiameter);
+        const int position = qBound(0, x - thumbDiameter / 2, span);
         const int newValue = QStyle::sliderValueFromPosition(minimum(), maximum(), position, span,
-                                                              true);
+                                                              invertedAppearance());
         if (newValue != value()) {
             setValue(newValue);
             Q_EMIT sliderMoved(newValue);
@@ -228,12 +226,13 @@ private:
     }
 };
 
-class NoiseControlSurface final : public QWidget
+class AirPodsGlyph final : public QWidget
 {
 public:
-    explicit NoiseControlSurface(QWidget *parent = nullptr) : QWidget{parent}
+    explicit AirPodsGlyph(QWidget *parent = nullptr) : QWidget{parent}
     {
-        setMinimumHeight(82);
+        setFixedSize(24, 24);
+        setAccessibleName(QObject::tr("AirPods"));
     }
 
 protected:
@@ -241,19 +240,15 @@ protected:
     {
         QPainter painter{this};
         painter.setRenderHint(QPainter::Antialiasing);
-        const bool dark = IsDark(this);
-        const QRectF surface = rect().adjusted(0.5, 0.5, -0.5, -0.5);
-        QLinearGradient material{surface.topLeft(), surface.bottomRight()};
-        material.setColorAt(0.0, ColorFor(dark, QColor{"#DCE5EB"}, QColor{"#3A3A3C"}));
-        material.setColorAt(1.0, ColorFor(dark, QColor{"#C8D3DC"}, QColor{"#29292B"}));
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(material);
-        painter.drawRoundedRect(surface, 18.0, 18.0);
-
-        QColor highlight{255, 255, 255, dark ? 24 : 150};
-        painter.setPen(QPen{highlight, 1.0});
+        const QColor color = IsDark(this) ? QColor{"#F5F5F7"} : QColor{"#1D1D1F"};
+        painter.setPen(QPen{color, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin});
         painter.setBrush(Qt::NoBrush);
-        painter.drawRoundedRect(surface.adjusted(0.5, 0.5, -0.5, -0.5), 17.5, 17.5);
+        painter.drawEllipse(QRectF{3.0, 3.0, 7.5, 9.5});
+        painter.drawEllipse(QRectF{13.5, 3.0, 7.5, 9.5});
+        painter.drawLine(QPointF{5.0, 11.0}, QPointF{5.0, 19.0});
+        painter.drawLine(QPointF{8.5, 11.0}, QPointF{8.5, 20.5});
+        painter.drawLine(QPointF{15.5, 11.0}, QPointF{15.5, 20.5});
+        painter.drawLine(QPointF{19.0, 11.0}, QPointF{19.0, 19.0});
     }
 };
 
@@ -263,7 +258,9 @@ public:
     NoiseControlButton(PopupControlPanel::NoiseControlMode mode, QWidget *parent = nullptr)
         : QPushButton{parent}, _mode{mode}
     {
-        setMinimumSize(60, 82);
+        setText(ModeName(mode));
+        setMinimumHeight(30);
+        setMinimumWidth(160);
         setCursor(Qt::PointingHandCursor);
         setFocusPolicy(Qt::StrongFocus);
     }
@@ -276,53 +273,40 @@ protected:
         painter.setRenderHint(QPainter::TextAntialiasing);
         const bool dark = IsDark(this);
         const bool enabled = isEnabled();
-        const QColor accent = dark ? QColor{"#0A84FF"} : QColor{"#007AFF"};
         const QColor primary = ColorFor(dark, QColor{"#1D1D1F"}, QColor{"#F5F5F7"});
         const QColor unavailable = ColorFor(dark, QColor{"#707178"}, QColor{"#8E8E93"});
-        const QRectF iconCircle{width() / 2.0 - 22.0, 5.0, 44.0, 44.0};
-
-        if (isChecked()) {
-            QColor selected = accent;
-            if (isDown()) {
-                selected = selected.darker(112);
-            }
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(selected);
-            painter.drawEllipse(iconCircle);
-        }
-        else if (underMouse() && enabled) {
-            QColor hover = primary;
-            hover.setAlpha(dark ? 36 : 22);
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(hover);
-            painter.drawEllipse(iconCircle);
-        }
+        const QColor accent = dark ? QColor{"#0A84FF"} : QColor{"#007AFF"};
+        const QRectF glyphBounds{32.0, 4.0, 22.0, 22.0};
 
         if (hasFocus() && enabled) {
             QColor focus = accent;
             focus.setAlpha(190);
             painter.setBrush(Qt::NoBrush);
             painter.setPen(QPen{focus, 2.0});
-            painter.drawEllipse(iconCircle.adjusted(-2.0, -2.0, 2.0, 2.0));
+            painter.drawRoundedRect(QRectF{1.0, 1.0, width() - 2.0, height() - 2.0}, 5.0, 5.0);
         }
 
-        const QColor content = !enabled ? unavailable : (isChecked() ? Qt::white : primary);
-        DrawNoiseGlyph(painter, _mode, iconCircle.adjusted(10.0, 10.0, -10.0, -10.0), content);
+        const QColor content = !enabled ? unavailable : primary;
+        if (isChecked()) {
+            painter.setPen(QPen{content, 2.1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin});
+            painter.drawLine(QPointF{8.0, height() / 2.0}, QPointF{12.0, height() / 2.0 + 4.0});
+            painter.drawLine(QPointF{12.0, height() / 2.0 + 4.0}, QPointF{20.0, height() / 2.0 - 5.0});
+        }
+        DrawNoiseGlyph(painter, _mode, glyphBounds, content);
 
         QFont labelFont = font();
-        labelFont.setPointSizeF(9.0);
+        labelFont.setPointSizeF(12.0);
         labelFont.setWeight(isChecked() ? QFont::DemiBold : QFont::Medium);
-        const auto label = ModeButtonText(_mode);
-        const QRect textRect{2, 52, width() - 4, height() - 52};
-        while (labelFont.pointSizeF() > 7.5 &&
+        const auto label = ModeName(_mode);
+        const QRect textRect{64, 0, width() - 68, height()};
+        while (labelFont.pointSizeF() > 10.0 &&
                QFontMetrics{labelFont}.horizontalAdvance(label) > textRect.width())
         {
             labelFont.setPointSizeF(labelFont.pointSizeF() - 0.5);
         }
         painter.setFont(labelFont);
         painter.setPen(content);
-        painter.drawText(textRect, Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap,
-                         label);
+        painter.drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, label);
     }
 
 private:
@@ -399,11 +383,11 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
     setFrameShape(QFrame::NoFrame);
 
     auto *root = new QVBoxLayout{this};
-    root->setContentsMargins(14, 13, 14, 13);
-    root->setSpacing(6);
+    root->setContentsMargins(14, 12, 14, 12);
+    root->setSpacing(7);
 
     auto *volumeHeader = new QHBoxLayout{};
-    auto *volumeLabel = new QLabel{tr("Geluidsniveau"), this};
+    auto *volumeLabel = new QLabel{tr("Sound"), this};
     volumeLabel->setObjectName("sectionLabel");
     _volumeValue = new QLabel{this};
     _volumeValue->setObjectName("volumeValue");
@@ -414,43 +398,52 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
     volumeHeader->addWidget(_volumeValue);
     root->addLayout(volumeHeader);
 
-    auto *volumeStage = new QVBoxLayout{};
+    auto *volumeStage = new QHBoxLayout{};
     volumeStage->setContentsMargins(0, 0, 0, 0);
-    volumeStage->setSpacing(1);
-    _slider = new AppleVerticalVolumeSlider{this};
+    volumeStage->setSpacing(8);
+    auto *airPodsGlyph = new AirPodsGlyph{this};
+    volumeStage->addWidget(airPodsGlyph);
+    _slider = new AppleHorizontalVolumeSlider{this};
+    _slider->setObjectName("volumeSlider");
     _slider->setRange(0, 100);
     _slider->setSingleStep(1);
     _slider->setPageStep(10);
     _slider->setAccessibleName(tr("Geluidsniveau"));
     _slider->setAccessibleDescription(tr("Windows-uitvoervolume"));
     _slider->setToolTip(tr("Windows-uitvoervolume"));
-    volumeStage->addWidget(_slider, 0, Qt::AlignHCenter);
+    volumeStage->addWidget(_slider, 1);
     _speakerGlyph = new SpeakerGlyph{this};
-    volumeStage->addWidget(_speakerGlyph, 0, Qt::AlignHCenter);
+    volumeStage->addWidget(_speakerGlyph);
     root->addLayout(volumeStage);
 
-    auto *modeLabel = new QLabel{tr("Luistermodus"), this};
-    modeLabel->setObjectName("sectionLabel");
+    auto *separator = new QFrame{this};
+    separator->setObjectName("controlSeparator");
+    separator->setFrameShape(QFrame::HLine);
+    separator->setFrameShadow(QFrame::Plain);
+    separator->setFixedHeight(1);
+    root->addWidget(separator);
+
+    auto *modeLabel = new QLabel{tr("Noise Control"), this};
+    modeLabel->setObjectName("noiseControlLabel");
     root->addWidget(modeLabel);
 
-    auto *modeSurface = new NoiseControlSurface{this};
-    auto *modes = new QHBoxLayout{modeSurface};
-    modes->setContentsMargins(5, 0, 5, 0);
-    modes->setSpacing(0);
+    auto *modes = new QVBoxLayout{};
+    modes->setContentsMargins(0, 0, 0, 0);
+    modes->setSpacing(1);
     _modeGroup = new QButtonGroup{this};
     _modeGroup->setExclusive(true);
 
     constexpr NoiseControlMode visualModeOrder[] = {
-        NoiseControlMode::Off,
         NoiseControlMode::Transparency,
         NoiseControlMode::Adaptive,
         NoiseControlMode::ANC,
+        NoiseControlMode::Off,
     };
     // Keep construction in enum order so programmatic clients retain their original ordering;
-    // the layout itself follows Apple's Off, Transparency, Adaptive, Noise Cancellation order.
+    // the presentation mirrors macOS: Transparency, Adaptive, Noise Cancellation, then Off.
     for (int i = 0; i < 4; ++i) {
         const auto mode = static_cast<NoiseControlMode>(i);
-        auto *button = new NoiseControlButton{mode, modeSurface};
+        auto *button = new NoiseControlButton{mode, this};
         button->setCheckable(true);
         button->setEnabled(false);
         button->setAccessibleName(tr("Luistermodus: %1").arg(ModeName(mode)));
@@ -464,9 +457,9 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
         _buttonModes.push_back(mode);
     }
     for (const auto mode : visualModeOrder) {
-        modes->addWidget(_modeButtons[static_cast<int>(mode)], 1);
+        modes->addWidget(_modeButtons[static_cast<int>(mode)]);
     }
-    root->addWidget(modeSurface);
+    root->addLayout(modes);
 
     _unavailableStatus = new QLabel{tr("AirPods-bediening niet beschikbaar"), this};
     _unavailableStatus->setObjectName("unavailableStatus");
@@ -523,14 +516,17 @@ void PopupControlPanel::ApplyStyle()
     const bool dark = IsDark(this);
     const QString fg = dark ? "#F5F5F7" : "#1D1D1F";
     const QString secondary = dark ? "#AEAEB2" : "#5F6470";
+    const QString separator = dark ? "rgba(235,235,245,0.18)" : "rgba(60,60,67,0.18)";
     setStyleSheet(
         QStringLiteral("QFrame#popupControlPanel { background: transparent; border: none; }"
                        "QLabel { color: %1; font-size: 13px; background: transparent; }"
                        "QLabel#sectionLabel { color: %1; font-size: 13px; font-weight: 600; }"
+                       "QLabel#noiseControlLabel { color: %1; font-size: 13px; font-weight: 600; }"
                        "QLabel#volumeValue { color: %2; font-size: 13px; font-weight: 600; }"
                        "QLabel#unavailableStatus { color: %2; font-size: 11px; }"
-                       "QSlider, QPushButton { background: transparent; border: none; }")
-            .arg(fg, secondary));
+                       "QFrame#controlSeparator { color: %3; background: %3; border: none; }"
+                       "QPushButton { background: transparent; border: none; }")
+            .arg(fg, secondary, separator));
 }
 
 void PopupControlPanel::SetPreviewVolume(int percent)
