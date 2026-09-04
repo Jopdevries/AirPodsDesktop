@@ -208,6 +208,7 @@ private Q_SLOTS:
             "complete-popup-light-long-name.png",
             "complete-popup-light-airpods-pro.png",
         };
+        const QColor expectedPopupSurface{250, 250, 252};
 
         for (const bool dark : {false, true}) {
             QPalette palette;
@@ -236,8 +237,8 @@ private Q_SLOTS:
 
                 // The AVI is opaque light artwork, so the whole pairing surface deliberately
                 // remains light even while the host application uses a dark palette.
-                QCOMPARE(window.palette().color(QPalette::Window), QColor{250, 250, 252});
-                QCOMPARE(controls->palette().color(QPalette::Window), QColor{250, 250, 252});
+                QCOMPARE(window.palette().color(QPalette::Window), expectedPopupSurface);
+                QCOMPARE(controls->palette().color(QPalette::Window), expectedPopupSurface);
                 QVERIFY(window.width() >= 360);
                 QVERIFY(window.height() >= window.minimumSizeHint().height());
                 auto *deviceLabel = window.findChild<QLabel *>("deviceLabel");
