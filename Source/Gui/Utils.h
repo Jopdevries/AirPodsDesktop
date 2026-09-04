@@ -62,6 +62,31 @@ inline void SetRoundedCorners(QDialog *widget, qreal radius)
 {
 #ifdef Q_OS_WIN
     const auto windowHandle = reinterpret_cast<HWND>(widget->winId());
+
+    // Windows 11's compositor antialiases the actual top-level window edge. Prefer it over a
+    // GDI region, whose whole-pixel clipping is visibly stair-stepped at fractional DPI scales.
+    // Resolve the API dynamically so the same binary keeps working on Windows 10.
+    using DwmSetWindowAttributeFn = HRESULT(WINAPI *)(HWND, DWORD, LPCVOID, DWORD);
+    static const auto dwmSetWindowAttribute = [] {
+        const auto module = LoadLibraryW(L"dwmapi.dll");
+        return module == nullptr
+            ? static_cast<DwmSetWindowAttributeFn>(nullptr)
+            : reinterpret_cast<DwmSetWindowAttributeFn>(
+                  GetProcAddress(module, "DwmSetWindowAttribute"));
+    }();
+    if (dwmSetWindowAttribute != nullptr) {
+        constexpr DWORD windowCornerPreferenceAttribute = 33;
+        constexpr DWORD roundCornerPreference = 2;
+        if (SUCCEEDED(dwmSetWindowAttribute(
+                windowHandle, windowCornerPreferenceAttribute, &roundCornerPreference,
+                sizeof(roundCornerPreference))))
+        {
+            // Remove a region left by a previous resize or an older fallback call.
+            SetWindowRgn(windowHandle, nullptr, TRUE);
+            return;
+        }
+    }
+
     RECT windowRect{};
     if (GetWindowRect(windowHandle, &windowRect)) {
         const auto width = windowRect.right - windowRect.left;

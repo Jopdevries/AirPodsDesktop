@@ -120,7 +120,6 @@ private:
     void OnPlayerStateChanged(QMediaPlayer::State newState);
 
     void DoHide();
-    void paintEvent(QPaintEvent *event) override;
     void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 

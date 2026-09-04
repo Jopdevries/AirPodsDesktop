@@ -25,7 +25,6 @@
 #include <QFontMetrics>
 #include <QPainter>
 #include <QMessageBox>
-#include <QPaintEvent>
 #include <QFontDatabase>
 #include <QResizeEvent>
 
@@ -213,7 +212,6 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
     setMinimumWidth(_windowMinimumWidth);
     setFont(QFontDatabase::systemFont(QFontDatabase::GeneralFont));
     setAttribute(Qt::WA_DeleteOnClose);
-    setAttribute(Qt::WA_TranslucentBackground);
     setWindowFlags(windowFlags() | Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
 
     // The bundled Apple pairing AVI has an opaque light background.  Keep the complete pairing
@@ -229,7 +227,8 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
     popupPalette.setColor(QPalette::Button, QColor{229, 229, 234});
     popupPalette.setColor(QPalette::ButtonText, QColor{28, 28, 30});
     setPalette(popupPalette);
-    setAutoFillBackground(false);
+    setAutoFillBackground(true);
+    Utils::Qt::SetRoundedCorners(this, _windowCornerRadius);
     Utils::Qt::SetPaletteColor(this, QPalette::Window, QColor{250, 250, 252});
     Utils::Qt::SetPaletteColor(_ui.deviceLabel, QPalette::WindowText, QColor{28, 28, 30});
     _ui.controlSeparator->setStyleSheet("color: rgba(60,60,67,51);");
@@ -752,6 +751,7 @@ void MainWindow::showEvent(QShowEvent *event)
     const auto targetY = availableGeometry.bottom() - height() + 1 - _screenMargin.height();
 
     move(targetX, screenGeometry.bottom() + 1);
+    Utils::Qt::SetRoundedCorners(this, _windowCornerRadius);
 
     _posAnimation.stop();
     _posAnimation.setDuration(260);
@@ -759,21 +759,6 @@ void MainWindow::showEvent(QShowEvent *event)
     _posAnimation.setStartValue(pos());
     _posAnimation.setEndValue(QPoint{targetX, targetY});
     _posAnimation.start();
-}
-
-void MainWindow::paintEvent(QPaintEvent *event)
-{
-    Q_UNUSED(event);
-
-    // A bitmap/window-region mask clips on whole physical pixels and leaves stair-stepped
-    // corners at common Windows scale factors. A translucent top-level surface lets Qt blend
-    // the curved edge in device pixels instead.
-    QPainter painter{this};
-    painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
-    const QRectF surface = QRectF{rect()}.adjusted(0.5, 0.5, -0.5, -0.5);
-    painter.setPen(QPen{QColor{60, 60, 67, 24}, 1.0});
-    painter.setBrush(palette().color(QPalette::Window));
-    painter.drawRoundedRect(surface, _windowCornerRadius, _windowCornerRadius);
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
