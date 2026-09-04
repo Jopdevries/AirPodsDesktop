@@ -50,8 +50,8 @@ public:
     {
         setFixedSize(32, 32);
         setFocusPolicy(Qt::StrongFocus);
-        setAccessibleName(tr("Sluiten"));
-        setToolTip(tr("Sluiten"));
+        setAccessibleName(QObject::tr("Sluiten"));
+        setToolTip(QObject::tr("Sluiten"));
     }
 
 protected:
@@ -70,7 +70,7 @@ protected:
         {
             painter.setPen(Qt::NoPen);
 
-            const bool dark = qGray(palette().color(QPalette::Window)) < 128;
+            const bool dark = qGray(palette().color(QPalette::Window).rgb()) < 128;
             QColor color = dark ? QColor{255, 255, 255, 28} : QColor{60, 60, 67, 20};
             if (isDown()) {
                 color = dark ? QColor{255, 255, 255, 60} : QColor{60, 60, 67, 48};
@@ -94,7 +94,7 @@ protected:
     {
         painter.save();
         {
-            const bool dark = qGray(palette().color(QPalette::Window)) < 128;
+            const bool dark = qGray(palette().color(QPalette::Window).rgb()) < 128;
             painter.setPen(
                 QPen{dark ? QColor{174, 174, 178} : QColor{110, 110, 115}, 1.5, Qt::SolidLine,
                      Qt::RoundCap});
@@ -190,7 +190,7 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(windowFlags() | Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
 
-    const bool dark = qGray(qApp->palette().color(QPalette::Window)) < 128;
+    const bool dark = qGray(qApp->palette().color(QPalette::Window).rgb()) < 128;
     Utils::Qt::SetRoundedCorners(this, _windowCornerRadius);
     Utils::Qt::SetRoundedCorners(_ui.pushButton, 6);
     Utils::Qt::SetPaletteColor(

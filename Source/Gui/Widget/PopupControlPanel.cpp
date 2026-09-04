@@ -29,7 +29,7 @@ public:
     explicit SpeakerGlyph(QWidget *parent = nullptr) : QWidget{parent}
     {
         setFixedSize(20, 28);
-        setAccessibleName(tr("Speaker"));
+        setAccessibleName(QObject::tr("Speaker"));
     }
 
 protected:
@@ -175,7 +175,7 @@ PopupControlPanel::PopupControlPanel(QWidget *parent) : QFrame{parent}
 
 void PopupControlPanel::ApplyStyle()
 {
-    const bool dark = qGray(palette().color(QPalette::Window)) < 128;
+    const bool dark = qGray(palette().color(QPalette::Window).rgb()) < 128;
     const QString bg = dark ? "rgba(44,44,46,235)" : "rgba(246,246,248,235)";
     const QString fg = dark ? "#f5f5f7" : "#1d1d1f";
     const QString secondary = dark ? "#aeaeb2" : "#6e6e73";
