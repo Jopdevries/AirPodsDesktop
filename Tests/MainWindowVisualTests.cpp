@@ -92,13 +92,6 @@ class MainWindowVisualTests final : public QObject
     }
 
 private Q_SLOTS:
-    void initTestCase()
-    {
-#if defined APD_OS_WIN
-        Core::OS::Windows::Winrt::Initialize();
-#endif
-    }
-
     void convertsEndpointVolumeToPercent()
     {
         QCOMPARE(Gui::PopupControlPanel::PercentFromVolume(-0.1f), 0);
@@ -231,5 +224,18 @@ private Q_SLOTS:
     }
 };
 
-QTEST_MAIN(MainWindowVisualTests)
+int main(int argc, char *argv[])
+{
+    // Qt initialises the GUI thread as STA.  The product initialises its WinRT apartment before
+    // constructing QApplication, which avoids RPC_E_CHANGED_MODE and lets the real multimedia
+    // pipeline decode the bundled AirPods animation under the same conditions as the app.
+#if defined APD_OS_WIN
+    Core::OS::Windows::Winrt::Initialize();
+#endif
+
+    QApplication application{argc, argv};
+    MainWindowVisualTests tests;
+    return QTest::qExec(&tests, argc, argv);
+}
+
 #include "MainWindowVisualTests.moc"
