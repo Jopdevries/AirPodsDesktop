@@ -72,11 +72,11 @@ Q_SIGNALS:
     void SilentUpdateAvailable(const Core::Update::ReleaseInfo &releaseInfo);
 
 private:
-    constexpr static int _windowMinimumWidth = 360;
+    constexpr static int _windowMinimumWidth = 320;
     constexpr static QSize _screenMargin{24, 24};
-    constexpr static qreal _windowCornerRadius = 22.0;
-    constexpr static int _deviceLabelMaximumPointSize = 15;
-    constexpr static int _deviceLabelMinimumPointSize = 11;
+    constexpr static qreal _windowCornerRadius = 20.0;
+    constexpr static int _deviceLabelMaximumPointSize = 18;
+    constexpr static int _deviceLabelMinimumPointSize = 13;
 
     Ui::MainWindow _ui;
 

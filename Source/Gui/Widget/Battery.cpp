@@ -57,7 +57,9 @@ void Battery::paintEvent(QPaintEvent *event)
         _batteryRect.right(), _batteryRect.bottom() / 3.0, headWidth, _batteryRect.bottom() / 3.0};
 
     QPainter painter{this};
-    painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
+    painter.setRenderHints(
+        QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
+    painter.setPen(palette().color(QPalette::WindowText));
 
     drawBorder(painter);
     drawBackground(painter);
@@ -162,6 +164,7 @@ void Battery::drawText(QPainter &painter)
     {
         QTextOption textOption;
         textOption.setWrapMode(QTextOption::NoWrap);
+        textOption.setAlignment(Qt::AlignHCenter);
 
         painter.drawText(_textRect, QString{"%1%"}.arg(_value), textOption);
     }

@@ -7,6 +7,7 @@
 
 class QLabel;
 class QButtonGroup;
+class QPaintEvent;
 class QPushButton;
 class QSlider;
 class QTimer;
@@ -40,9 +41,11 @@ private:
     QLabel *_unavailableStatus{};
     QButtonGroup *_modeGroup{};
     QVector<QPushButton *> _modeButtons;
+    QVector<NoiseControlMode> _buttonModes;
     QTimer *_volumePoller{};
 
     void ApplyStyle();
+    void paintEvent(QPaintEvent *event) override;
     void SetVolumePercent(int percent);
     void SetVolumeUnavailable();
     void RefreshVolume();

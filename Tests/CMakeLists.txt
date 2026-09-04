@@ -45,4 +45,4 @@ add_executable(
 )
 target_link_libraries(MainWindowVisualTests PRIVATE apd_gui Qt5::Test Qt5::Widgets)
 target_include_directories(MainWindowVisualTests PRIVATE "${CMAKE_SOURCE_DIR}")
-add_test(NAME MainWindowVisualTests COMMAND MainWindowVisualTests)
+add_test(NAME MainWindowVisualTests COMMAND MainWindowVisualTests -o -,txt)

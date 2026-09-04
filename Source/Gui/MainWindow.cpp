@@ -50,7 +50,7 @@ public:
     CloseButton(QWidget *parent = nullptr)
         : QAbstractButton{parent}
     {
-        setFixedSize(32, 32);
+        setFixedSize(28, 28);
         setFocusPolicy(Qt::StrongFocus);
         setObjectName("closeButton");
         setAccessibleName(QObject::tr("Sluiten"));
@@ -74,12 +74,12 @@ protected:
             painter.setPen(Qt::NoPen);
 
             const bool dark = qGray(palette().color(QPalette::Window).rgb()) < 128;
-            QColor color = dark ? QColor{255, 255, 255, 28} : QColor{60, 60, 67, 20};
+            QColor color = dark ? QColor{255, 255, 255, 22} : QColor{60, 60, 67, 18};
             if (isDown()) {
-                color = dark ? QColor{255, 255, 255, 60} : QColor{60, 60, 67, 48};
+                color = dark ? QColor{255, 255, 255, 48} : QColor{60, 60, 67, 38};
             }
             else if (underMouse()) {
-                color = dark ? QColor{255, 255, 255, 45} : QColor{60, 60, 67, 32};
+                color = dark ? QColor{255, 255, 255, 34} : QColor{60, 60, 67, 24};
             }
             painter.setBrush(QBrush{color});
             painter.drawEllipse(rect());
@@ -99,13 +99,13 @@ protected:
         {
             const bool dark = qGray(palette().color(QPalette::Window).rgb()) < 128;
             painter.setPen(
-                QPen{dark ? QColor{174, 174, 178} : QColor{110, 110, 115}, 1.5, Qt::SolidLine,
+                QPen{dark ? QColor{174, 174, 178} : QColor{142, 142, 147}, 1.25, Qt::SolidLine,
                      Qt::RoundCap});
             painter.setBrush(Qt::NoBrush);
 
             QSize size = this->size();
 
-            constexpr int margin = 10;
+            constexpr int margin = 9;
 
             painter.drawLine(margin, margin, size.width() - margin, size.height() - margin);
 
@@ -238,6 +238,30 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
         "background: #e5e5ea; color: #1c1c1e; } QPushButton:hover { background: #d1d1d6; "
         "} QPushButton:focus { border: 2px solid #007aff; }");
 
+    const auto configureBattery = [](Widget::Battery *battery) {
+        auto font = battery->font();
+        font.setPointSize(10);
+        font.setWeight(QFont::Medium);
+        battery->setFont(font);
+
+        battery->setTextPadding(5.0);
+        battery->setBatterySize(28, 12);
+        battery->setBorderWidth(1.0);
+        battery->setBorderRadius(3.0);
+        battery->setBackgroundRadius(2.0);
+        battery->setHeadRadius(1.5);
+        battery->setBorderColor(QColor{142, 142, 147});
+        battery->setNormalColor(QColor{52, 199, 89});
+        battery->setChargingIconColor(QColor{52, 199, 89});
+
+        auto batteryPalette = battery->palette();
+        batteryPalette.setColor(QPalette::WindowText, QColor{29, 29, 31});
+        battery->setPalette(batteryPalette);
+    };
+    configureBattery(_leftBattery);
+    configureBattery(_rightBattery);
+    configureBattery(_caseBattery);
+
     _controlPanel = new PopupControlPanel{this};
     _controlPanel->SetNoiseControlState(std::nullopt, false);
     _ui.layoutControls->addWidget(_controlPanel);
@@ -268,9 +292,9 @@ MainWindow::MainWindow(QWidget *parent, bool startUpdateChecker) : QDialog{paren
 
     _ui.layoutAnimation->addWidget(_videoWidget);
     _ui.layoutAnimation->setAlignment(_videoWidget, Qt::AlignCenter);
-    _ui.layoutPods->addWidget(_leftBattery);
-    _ui.layoutPods->addWidget(_rightBattery);
-    _ui.layoutCase->addWidget(_caseBattery);
+    _ui.layoutPods->addWidget(_leftBattery, 0, Qt::AlignHCenter | Qt::AlignTop);
+    _ui.layoutPods->addWidget(_rightBattery, 0, Qt::AlignHCenter | Qt::AlignTop);
+    _ui.layoutCase->addWidget(_caseBattery, 0, Qt::AlignHCenter | Qt::AlignTop);
     _ui.layoutClose->addWidget(_closeButton);
 
     // For getting the correct initial height of `_videoWidget` later
@@ -457,8 +481,10 @@ void MainWindow::ResizeAnimationWidget()
 
     const auto aspectRatio = static_cast<double>(presentation.sourceSize.width()) /
         static_cast<double>(presentation.sourceSize.height());
-    const auto height = containerSize.height();
-    const auto width = qMin(containerSize.width(), qRound(height * aspectRatio));
+    // At the 320 logical-pixel pairing-card width this is exactly 300 x 150. Keeping the
+    // decoded 2:1 frame at that integer size avoids interpolation artifacts at 150% DPI.
+    const auto height = qMin(containerSize.height(), 150);
+    const auto width = qMin(qMin(containerSize.width(), 300), qRound(height * aspectRatio));
     if (width > 0) {
         _videoWidget->setFixedSize(width, height);
     }
